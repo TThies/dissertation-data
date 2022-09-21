@@ -1,0 +1,314 @@
+---
+title: "Analysis of VAS Ratings"
+author: "Tabea Thies"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Analysis of naive listener ratings of intelligibility and naturalness
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages
+
+```{r load_tidyverse, warning = FALSE, message = FALSE}
+
+library(tidyverse)
+library(ordinalCont)
+
+set.seed(42)
+
+```
+
+Load data set
+
+```{r load_counts, message = FALSE, warning = FALSE}
+data <- read_csv('../data/listener_ratings.csv')
+```
+
+# Create subsets for relevant comparisons
+
+and exclude data of speaker PD03 because DBS-OFF condition is missing
+
+```{r, message = FALSE, warning = FALSE}
+
+data_PD <-  filter(data, Group %in% c('medOFF', 'CON'))
+
+data_DOPA <-  filter(data, Group %in% c('medOFF', 'medON'))
+
+data_DBS <-  filter(data, Group %in% c('DBSOFF', 'DBSON'))
+data_DBS <- subset(data_DBS, Speaker != "PD03")
+
+data_OFF <-  filter(data, Group %in% c('medOFF', 'DBSOFF'))
+data_OFF <- subset(data_OFF, Speaker != "PD03")
+
+data_DBS2 <-  filter(data, Group %in% c('medOFF', 'DBSON'))
+
+```
+
+# Disease Effect
+
+Descriptive stats for reporting values in Section 6.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+Intell <- data_PD %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Intell)),
+            SD = round(sd(Intell)))
+
+Intell
+
+Natural <- data_PD %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Natural)),
+            SD = round(sd(Natural)))
+Natural
+
+```
+
+create continuous ordinal regression model
+for testing difference of intelligibility 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit1 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_PD)
+
+#save(fit1, file = '../models/Intell_mdl_PD.RData')
+
+load('../models/Intell_mdl_PD.RData')
+
+summary(fit1)
+```
+
+create continuous ordinal regression model
+for testing difference of naturalness 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit2 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_PD)
+
+#save(fit2, file = '../models/Natural_mdl_PD.RData')
+
+load('../models/Natural_mdl_PD.RData')
+
+summary(fit2)
+
+```
+
+# Levodopa Effect
+
+Descriptive stats for reporting values in Section 7.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+Intell <- data_DOPA %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Intell)),
+            SD = round(sd(Intell)))
+
+Intell
+
+Natural <- data_DOPA %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Natural)),
+            SD = round(sd(Natural)))
+Natural
+
+```
+
+create continuous ordinal regression model
+for testing difference of intelligibility 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit3 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DOPA)
+
+#save(fit3, file = '../models/Intell_mdl_DOPA.RData')
+
+load('../models/Intell_mdl_DOPA.RData')
+
+summary(fit3)
+
+```
+
+create continuous ordinal regression model
+for testing difference of naturalness 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit4 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DOPA)
+
+#save(fit4, file = '../models/Natural_mdl_DOPA.RData')
+
+load('../models/Natural_mdl_DOPA.RData')
+
+summary(fit4)
+
+```
+
+# DBS Effect
+
+Descriptive stats for reporting values in Section 8.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+Intell <- data_DBS %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Intell)),
+            SD = round(sd(Intell)))
+
+Intell
+
+Natural <- data_DBS %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Natural)),
+            SD = round(sd(Natural)))
+Natural
+
+```
+
+create continuous ordinal regression model
+for testing difference of intelligibility 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit5 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DBS)
+
+#save(fit5, file = '../models/Intell_mdl_DBS.RData')
+
+load('../models/Intell_mdl_DBS.RData')
+
+summary(fit5)
+
+```
+
+create continuous ordinal regression model
+for testing difference of naturalness 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit6 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DBS)
+
+#save(fit6, file = '../models/Natural_mdl_DBS.RData')
+
+load('../models/Natural_mdl_DBS.RData')
+
+summary(fit6)
+
+```
+
+# Electrode Effect
+
+Descriptive stats for reporting values in Section 10.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+Intell <- data_OFF %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Intell)),
+            SD = round(sd(Intell)))
+
+Intell
+
+Natural <- data_OFF %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Natural)),
+            SD = round(sd(Natural)))
+Natural
+
+```
+
+create continuous ordinal regression model
+for testing difference of intelligibility 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit7 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_OFF)
+
+#save(fit7, file = '../models/Intell_mdl_OFF.RData')
+
+load('../models/Intell_mdl_OFF.RData')
+
+summary(fit7)
+
+```
+
+create continuous ordinal regression model
+for testing difference of naturalness 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit8 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_OFF)
+
+#save(fit8, file = '../models/Natural_mdl_OFF.RData')
+
+load('../models/Natural_mdl_OFF.RData')
+
+summary(fit8)
+
+
+```
+
+# Comparision: Baseline (preop med-OFF) with DBS-ON
+
+Descriptive stats for reporting values in Section 9.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+Intell <- data_DBS2 %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Intell)),
+            SD = round(sd(Intell)))
+
+Intell
+
+Natural <- data_DBS2 %>% 
+  group_by(Group) %>% 
+  summarise(M = round(mean(Natural)),
+            SD = round(sd(Natural)))
+Natural
+
+```
+
+create continuous ordinal regression model
+for testing difference of intelligibility 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit9 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DBS2)
+
+#save(fit9, file = '../models/Intell_mdl_DBS2.RData')
+
+load('../models/Intell_mdl_DBS2.RData')
+
+summary(fit9)
+
+```
+
+create continuous ordinal regression model
+for testing difference of naturalness 
+
+```{r, message = FALSE, warning = FALSE}
+
+#fit10 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
+#            data = data_DBS2)
+
+#save(fit10, file = '../models/Natural_mdl_DBS2.RData')
+
+load('../models/Natural_mdl_DBS2.RData')
+
+summary(fit10)
+
+```

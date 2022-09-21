@@ -1,0 +1,563 @@
+---
+title: "General Information"
+author: "Tabea Thies"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Analysis of motor and cognitive scores
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages
+
+```{r load_tidyverse, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+set.seed(42)
+library(ordinalCont)
+```
+
+Load data set
+
+```{r load_counts, message = FALSE, warning = FALSE}
+data <- read_delim('../data/demographics.csv')
+```
+
+## Disease duration
+
+```{r, message = FALSE, warning = FALSE}
+
+data_dis_dur <-  filter(data, med_con %in% c('med-OFF'))
+
+disdur_avgs <- data_dis_dur %>% 
+  summarise(M = round(mean(dis_dur, na.rm = T)),
+            SD = round(sd(dis_dur, na.rm = T)))
+disdur_avgs
+
+```
+## Age
+
+```{r, message = FALSE, warning = FALSE}
+
+data_age <-  filter(data, med_con %in% c('CON', 'med-OFF'))
+
+age_avgs <- data_age %>% 
+    group_by(med_con) %>% 
+    summarise(M = round(mean(age, na.rm = T)),
+            SD = round(sd(age, na.rm = T)))
+age_avgs
+
+```
+
+# UPDRS analysis
+
+Disease effect: comparing motor scores between controls and PD in med-OFF
+reported under section 6.1
+
+```{r, message = FALSE, warning = FALSE}
+
+data_CON_PD <-  filter(data, med_con %in% c('CON', 'med-OFF'))
+
+UPDRS_avgs <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)),
+            min = min(UPDRS_total, na.rm = T),
+            max = max(UPDRS_total, na.rm = T))
+UPDRS_avgs
+
+mdl1 <- lm(UPDRS_total ~ med_con  + age, data_CON_PD, REML = FALSE)
+mdl1_null <- lm(UPDRS_total ~ 1 + age, data_CON_PD, REML = FALSE)
+
+anova(mdl1, mdl1_null)
+
+axial_stats <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_axial, na.rm = T)),
+            SD = round(sd(UPDRS_axial, na.rm = T)))
+axial_stats
+
+brady_stats <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_brady, na.rm = T)),
+            SD = round(sd(UPDRS_brady, na.rm = T)))
+brady_stats
+
+rigid_stats <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_rigidity, na.rm = T)),
+            SD = round(sd(UPDRS_rigidity, na.rm = T)))
+rigid_stats 
+
+PIGD_stats <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_PIGD, na.rm = T)),
+            SD = round(sd(UPDRS_PIGD, na.rm = T)))
+PIGD_stats
+
+```
+
+Levodopa effect: comparing motor scores between med-OFF and med-ON
+reported and plotted under section 7.1
+
+```{r, message = FALSE, warning = FALSE}
+
+data_preop <-  filter(data, med_con %in% c('med-OFF', 'med-ON'))
+
+UPDRS_avgs <- data_preop %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)),
+            min = min(UPDRS_total, na.rm = T),
+            max = max(UPDRS_total, na.rm = T))
+UPDRS_avgs
+
+mdl2 <- lm(UPDRS_total ~ med_con  + age, data_preop, REML = FALSE)
+mdl2_null <- lm(UPDRS_total ~ 1 + age, data_preop, REML = FALSE)
+
+anova(mdl2, mdl2_null)
+
+UPDRS_avgs2 <- data_preop %>% 
+  group_by(med_con, speaker) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)))
+
+UPDRS_avgs2 %>% 
+  ggplot(aes(x = med_con, y = M, group = speaker)) +
+  geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
+  geom_line(col = 'darkgrey') +
+  theme_classic() +
+  theme(legend.position = 'none')+
+  scale_color_manual(values = c('#BE7592', '#74BDA0')) +
+  xlab(NULL) +
+  scale_x_discrete(labels = c('med-OFF','med-ON'))+
+  ylab("UPDRS III")+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(strip.text.x = element_text(size=20, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+```
+
+DBS effect: comparing motor scores between DBS-OFF and DBS-ON
+reported and plotted under section 8.1
+
+```{r, message = FALSE, warning = FALSE}
+
+data_postop <-  filter(data, med_con %in% c('med-OFF/DBS-OFF', 'med-OFF/DBS-ON'))
+
+## remove data of PD03
+data_postop <- data_postop[-c(5,6), ]
+
+UPDRS_avgs <- data_postop %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)),
+            min = min(UPDRS_total, na.rm = T),
+            max = max(UPDRS_total, na.rm = T))
+UPDRS_avgs
+
+mdl3 <- lm(UPDRS_total ~ med_con  + age, data_postop, REML = FALSE)
+mdl3_null <- lm(UPDRS_total ~ 1 + age, data_postop, REML = FALSE)
+
+anova(mdl3, mdl3_null)
+
+UPDRS_avgs2 <- data_postop %>% 
+  group_by(med_con, speaker) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)))
+
+UPDRS_avgs2 %>% 
+  ggplot(aes(x = med_con, y = M, group = speaker)) +
+  geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
+  geom_line(col = 'darkgrey') +
+  theme_classic() +
+  theme(legend.position = 'none')+
+  scale_color_manual(values = c('#5275AD', '#AD8A52')) +
+  xlab(NULL) +
+  scale_x_discrete(labels = c('DBS-OFF','DBS-ON'))+
+  ylab("UPDRS III")+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(strip.text.x = element_text(size=20, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+```
+
+Electrode/OFF effect: comparing motor scores between med-OFF and DBS-OFF
+reported and plotted under section 10.1
+
+```{r, message = FALSE, warning = FALSE}
+
+data_OFF <-  filter(data, med_con %in% c('med-OFF', 'med-OFF/DBS-OFF'))
+
+## remove data of PD03
+data_OFF <- data_OFF[-c(5,6), ]
+
+UPDRS_avgs <- data_OFF %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)),
+            min = min(UPDRS_total, na.rm = T),
+            max = max(UPDRS_total, na.rm = T))
+UPDRS_avgs
+
+mdl4 <- lm(UPDRS_total ~ med_con  + age, data_OFF, REML = FALSE)
+mdl4_null <- lm(UPDRS_total ~ 1 + age, data_OFF, REML = FALSE)
+
+anova(mdl4, mdl4_null)
+
+UPDRS_avgs2 <- data_OFF %>% 
+  group_by(med_con, speaker) %>% 
+  summarise(M = round(mean(UPDRS_total, na.rm = T)),
+            SD = round(sd(UPDRS_total, na.rm = T)))
+
+UPDRS_avgs2 %>% 
+  ggplot(aes(x = med_con, y = M, group = speaker)) +
+  geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
+  geom_line(col = 'darkgrey') +
+  theme_classic() +
+  theme(legend.position = 'none')+
+  scale_color_manual(values = c('#BE7592', '#5275AD')) +
+  xlab(NULL) +
+  scale_x_discrete(labels = c('med-OFF','DBS-OFF'))+
+  ylab("UPDRS III")+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(strip.text.x = element_text(size=20, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+```
+
+# Percentage changes in motor scores
+Create subsets
+
+```{r, message = FALSE, warning = FALSE}
+
+data_medOFF <-  filter(data, med_con %in% c('med-OFF'))
+data_medON <-  filter(data, med_con %in% c('med-ON'))
+data_DBSOFF <-  filter(data, med_con %in% c('med-OFF/DBS-OFF'))
+data_DBSON <-  filter(data, med_con %in% c('med-OFF/DBS-ON'))
+
+```
+
+Calculate change in motoric subscores from med-OFF to med-ON
+reported under 7.1
+
+```{r, message = FALSE, warning = FALSE}
+
+UPDRS_OFF_avgs <- data_medOFF %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_medOFF = mean(UPDRS_total, na.rm = T),
+            axial_medOFF = mean(UPDRS_axial, na.rm = T),
+            rigid_medOFF = mean(UPDRS_rigidity, na.rm = T),
+            brady_medOFF = mean(UPDRS_brady, na.rm = T),
+            PIGD_medOFF = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_ON_avgs <- data_medON  %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_medON = mean(UPDRS_total, na.rm = T),
+            axial_medON = mean(UPDRS_axial, na.rm = T),
+            rigid_medON = mean(UPDRS_rigidity, na.rm = T),
+            brady_medON = mean(UPDRS_brady, na.rm = T),
+            PIGD_medON = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_change <- inner_join(UPDRS_OFF_avgs, UPDRS_ON_avgs, by="speaker")
+
+## calculate percentage change
+
+UPDRS_change$total_change <- (UPDRS_change$UPDRS_medOFF - UPDRS_change$UPDRS_medON)/UPDRS_change$UPDRS_medOFF * 100
+UPDRS_change$axial_change <- (UPDRS_change$axial_medOFF - UPDRS_change$axial_medON)/UPDRS_change$axial_medOFF * 100
+UPDRS_change$rigid_change <- (UPDRS_change$rigid_medOFF - UPDRS_change$rigid_medON)/UPDRS_change$rigid_medOFF * 100
+UPDRS_change$PIGD_change <- (UPDRS_change$PIGD_medOFF - UPDRS_change$PIGD_medON)/UPDRS_change$PIGD_medOFF * 100
+UPDRS_change$brady_change <- (UPDRS_change$brady_medOFF - UPDRS_change$brady_medON)/UPDRS_change$brady_medOFF * 100
+
+
+UPDRS_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(total_change, na.rm = T)),
+            SD = round(sd(total_change, na.rm = T)))
+UPDRS_perc_change
+
+axial_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(axial_change, na.rm = T)),
+            SD = round(sd(axial_change, na.rm = T)))
+axial_perc_change
+
+rigid_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(rigid_change, na.rm = T)),
+            SD = round(sd(rigid_change, na.rm = T)))
+rigid_perc_change
+
+UPDRS_change$PIGD_change[UPDRS_change$PIGD_change == -Inf] <- NA
+
+PIGD_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(PIGD_change, na.rm = T)),
+            SD = round(sd(PIGD_change, na.rm = T)))
+PIGD_perc_change 
+
+UPDRS_change$brady_change[UPDRS_change$brady_change == -Inf] <- NA
+
+brady_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(brady_change, na.rm = T)),
+            SD = round(sd(brady_change, na.rm = T)))
+brady_perc_change 
+
+```
+
+Calculate change in motoric subscores from DBS-OFF to DBS-ON
+reported under 8.1
+
+```{r, message = FALSE, warning = FALSE}
+
+UPDRS_OFF_avgs <- data_DBSOFF %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_DBSOFF = mean(UPDRS_total, na.rm = T),
+            axial_DBSOFF = mean(UPDRS_axial, na.rm = T),
+            rigid_DBSOFF = mean(UPDRS_rigidity, na.rm = T),
+            brady_DBSOFF = mean(UPDRS_brady, na.rm = T),
+            PIGD_DBSOFF = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_ON_avgs <- data_DBSON  %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_DBSON = mean(UPDRS_total, na.rm = T),
+            axial_DBSON = mean(UPDRS_axial, na.rm = T),
+            rigid_DBSON = mean(UPDRS_rigidity, na.rm = T),
+            brady_DBSON = mean(UPDRS_brady, na.rm = T),
+            PIGD_DBSON = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_change <- inner_join(UPDRS_OFF_avgs, UPDRS_ON_avgs, by="speaker")
+
+## remove data of PD03
+UPDRS_change <- UPDRS_change[-3, ]
+
+## calculate percentage change
+
+UPDRS_change$total_change <- (UPDRS_change$UPDRS_DBSOFF - UPDRS_change$UPDRS_DBSON)/UPDRS_change$UPDRS_DBSOFF * 100
+UPDRS_change$axial_change <- (UPDRS_change$axial_DBSOFF - UPDRS_change$axial_DBSON)/UPDRS_change$axial_DBSOFF * 100
+UPDRS_change$rigid_change <- (UPDRS_change$rigid_DBSOFF - UPDRS_change$rigid_DBSON)/UPDRS_change$rigid_DBSOFF * 100
+UPDRS_change$PIGD_change <- (UPDRS_change$PIGD_DBSOFF - UPDRS_change$PIGD_DBSON)/UPDRS_change$PIGD_DBSOFF * 100
+UPDRS_change$brady_change <- (UPDRS_change$brady_DBSOFF - UPDRS_change$brady_DBSON)/UPDRS_change$brady_DBSOFF * 100
+
+UPDRS_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(total_change, na.rm = T)),
+            SD = round(sd(total_change, na.rm = T)))
+UPDRS_perc_change
+
+axial_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(axial_change, na.rm = T)),
+            SD = round(sd(axial_change, na.rm = T)))
+axial_perc_change
+
+rigid_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(rigid_change, na.rm = T)),
+            SD = round(sd(rigid_change, na.rm = T)))
+rigid_perc_change
+
+PIGD_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(PIGD_change, na.rm = T)),
+            SD = round(sd(PIGD_change, na.rm = T)))
+PIGD_perc_change 
+
+brady_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(brady_change, na.rm = T)),
+            SD = round(sd(brady_change, na.rm = T)))
+brady_perc_change 
+
+```
+
+
+Calculate change in motoric subscores from med-OFF to DBS-ON
+reported under 9.1
+
+```{r, message = FALSE, warning = FALSE}
+
+UPDRS_OFF_avgs <- data_medOFF %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_medOFF = mean(UPDRS_total, na.rm = T),
+            axial_medOFF = mean(UPDRS_axial, na.rm = T),
+            rigid_medOFF = mean(UPDRS_rigidity, na.rm = T),
+            brady_medOFF = mean(UPDRS_brady, na.rm = T),
+            PIGD_medOFF = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_ON_avgs <- data_DBSON  %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_DBSON = mean(UPDRS_total, na.rm = T),
+            axial_DBSON = mean(UPDRS_axial, na.rm = T),
+            rigid_DBSON = mean(UPDRS_rigidity, na.rm = T),
+            brady_DBSON = mean(UPDRS_brady, na.rm = T),
+            PIGD_DBSON = mean(UPDRS_PIGD, na.rm = T))
+
+UPDRS_change <- inner_join(UPDRS_OFF_avgs, UPDRS_ON_avgs, by="speaker")
+
+## calculate percentage change
+
+UPDRS_change$total_change <- (UPDRS_change$UPDRS_medOFF - UPDRS_change$UPDRS_DBSON)/UPDRS_change$UPDRS_medOFF * 100
+UPDRS_change$axial_change <- (UPDRS_change$axial_medOFF - UPDRS_change$axial_DBSON)/UPDRS_change$axial_medOFF * 100
+UPDRS_change$rigid_change <- (UPDRS_change$rigid_medOFF - UPDRS_change$rigid_DBSON)/UPDRS_change$rigid_medOFF * 100
+UPDRS_change$PIGD_change <- (UPDRS_change$PIGD_medOFF - UPDRS_change$PIGD_DBSON)/UPDRS_change$PIGD_medOFF * 100
+UPDRS_change$brady_change <- (UPDRS_change$brady_medOFF - UPDRS_change$brady_DBSON)/UPDRS_change$brady_medOFF * 100
+
+UPDRS_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(total_change, na.rm = T)),
+            SD = round(sd(total_change, na.rm = T)))
+UPDRS_perc_change
+
+axial_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(axial_change, na.rm = T)),
+            SD = round(sd(axial_change, na.rm = T)))
+axial_perc_change
+
+rigid_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(rigid_change, na.rm = T)),
+            SD = round(sd(rigid_change, na.rm = T)))
+rigid_perc_change
+
+UPDRS_change$PIGD_change[UPDRS_change$PIGD_change == -Inf] <- NA
+
+PIGD_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(PIGD_change, na.rm = T)),
+            SD = round(sd(PIGD_change, na.rm = T)))
+PIGD_perc_change 
+
+UPDRS_change$brady_change[UPDRS_change$brady_change == -Inf] <- NA
+
+brady_perc_change <- UPDRS_change %>% 
+  summarise(M = round(mean(brady_change, na.rm = T)),
+            SD = round(sd(brady_change, na.rm = T)))
+brady_perc_change 
+
+```
+
+# VAS analysis
+
+Disease effect: comparing controls and PD in med-OFF
+reported under section 6.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+VAS_avgs <- data_CON_PD %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(VAS, na.rm = T),1),
+            SD = round(sd(VAS, na.rm = T),1))
+VAS_avgs
+
+fit1 <- ocm(VAS ~ med_con + (1|speaker),
+            data = data_CON_PD)
+
+summary(fit1)
+
+```
+
+Levodopa effect: comparing med-OFF and med-ON
+reported under section 7.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+VAS_avgs <- data_preop  %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(VAS, na.rm = T),1),
+            SD = round(sd(VAS, na.rm = T),1))
+VAS_avgs
+
+fit2 <- ocm(VAS ~ med_con + (1|speaker),
+            data = data_preop )
+
+summary(fit2)
+
+```
+
+DBS effect: comparing DBS-OFF and DBS-ON
+reported under section 8.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+VAS_avgs <- data_postop  %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(VAS, na.rm = T),1),
+            SD = round(sd(VAS, na.rm = T),1))
+VAS_avgs
+
+fit3 <- ocm(VAS ~ med_con + (1|speaker),
+            data = data_postop )
+
+summary(fit3)
+
+```
+
+
+Electrode effect: comparing med-OFF and DBS-OFF
+reported under section 10.2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+VAS_avgs <- data_OFF  %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(VAS, na.rm = T),1),
+            SD = round(sd(VAS, na.rm = T),1))
+VAS_avgs
+
+fit4 <- ocm(VAS ~ med_con + (1|speaker),
+            data = data_OFF)
+
+summary(fit4)
+
+```
+
+DBS effect to Baseline: comparing med-OFF and DBS-ON
+reported under section .2.1
+
+```{r, message = FALSE, warning = FALSE}
+
+data_ON_DBS <-  filter(data, med_con %in% c('med-OFF', 'med-OFF/DBS-ON'))
+
+VAS_avgs <- data_ON_DBS  %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(VAS, na.rm = T),1),
+            SD = round(sd(VAS, na.rm = T),1))
+VAS_avgs
+
+fit5 <- ocm(VAS ~ med_con + (1|speaker),
+            data = data_ON_DBS)
+
+summary(fit5)
+
+```
+
+# Cognitive scores
+
+averaged across group (PD vs CON) and visit (preop vs postop)
+
+```{r, message = FALSE, warning = FALSE}
+
+data_cog <-  filter(data, med_con %in% c('CON', 'med-ON', 'med-OFF/DBS-ON'))
+
+BDI_stats <- data_cog %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(BDI, na.rm = T)),
+            SD = round(sd(BDI, na.rm = T)))
+BDI_stats
+
+PANDA_stats <- data_cog %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(PANDA, na.rm = T)),
+            SD = round(sd(PANDA, na.rm = T)))
+PANDA_stats
+
+MMST_stats <- data_cog %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(MMST, na.rm = T)),
+            SD = round(sd(MMST, na.rm = T)))
+MMST_stats
+
+```
+

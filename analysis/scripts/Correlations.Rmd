@@ -1,0 +1,1162 @@
+---
+title: "Correlations"
+author: "Tabea Thies"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Correlations between variabales
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages
+
+```{r load_tidyverse, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+Load data set
+
+```{r load_counts, message = FALSE, warning = FALSE}
+acoustic <- read_csv('../data/acoustics.csv')
+artic <- read_csv('../data/articulation.csv')
+VAI <- read_csv('../data/formants_VAI.csv')
+ratings <- read_csv('../data/listener_ratings.csv')
+LEDD <- read_delim('../data/LEDD.csv')
+
+```
+
+Calculate means to reduce tables and to combine them
+
+```{r, message = FALSE, warning = FALSE}
+
+data_acoustic_avgs <-acoustic %>% 
+  group_by(speaker, focus_con, med_con) %>% 
+  summarise(Sylldur = mean(syll.dur, na.rm = T),
+            V1dur = mean(V1.dur, na.rm = T))
+
+data_artic_avgs <- artic %>% 
+  group_by(speaker, focus_con, med_con) %>% 
+  summarise(age = mean(age, na.rm = T),
+            UPDRS = mean(UPDRS_total, na.rm = T),
+            axial = mean(UPDRS_axial, na.rm = T),
+            rigid = mean(UPDRS_rigidity, na.rm = T),
+            brady = mean(UPDRS_brady, na.rm = T),
+            PIGD = mean(UPDRS_PIGD, na.rm = T),
+            
+            VAS = mean(VAS, na.rm = T),
+            BDI = mean(BDI, na.rm = T),
+            PANDA = mean(PANDA, na.rm = T),
+            MMST = mean(MMST, na.rm = T),
+            
+            GAI = mean(GAI_V1, na.rm = T),
+            PVEL = mean(pvel_V1_abs, na.rm = T),
+            DISP = mean(disp_V1_abs, na.rm = T),
+            MMST = mean(MMST, na.rm = T))
+```
+
+Combine data frames
+
+```{r, message = FALSE, warning = FALSE}
+
+VAI$med_con <- recode(VAI$med_con,
+                          "CON" = "Control")
+
+data_new1 <- inner_join(data_acoustic_avgs, VAI, by=c("speaker", "med_con", "focus_con"))
+data_new2 <- merge(data_new1, data_artic_avgs, by=c("speaker", "med_con", "focus_con", "age", "VAS"))
+
+data_new <- data_new2[ -c(8, 17:26)]
+
+```
+
+Filter data only for broad productions to be able to match it with listener ratings
+
+```{r, message = FALSE, warning = FALSE}
+
+data_broad <- filter(data_new, focus_con %in% c('broad'))
+
+colnames(ratings)[4] <- "speaker"
+colnames(ratings)[3] <- "med_con"
+
+ratings$med_con <- recode(ratings$med_con,
+                          "CON" = "Control",
+                          "medOFF" = "med-OFF",
+                          "medON" = "med-ON",
+                          "DBSOFF" = "med-OFF/DBS-OFF",
+                          "DBSON" = "med-OFF/DBS-ON")
+
+ratings_avgs <- ratings %>% 
+  group_by(speaker, med_con) %>% 
+  summarise(Intell = mean(Intell, na.rm = T),
+            Natur = mean(Natural, na.rm = T))
+
+data_broad_new <- merge(data_broad, ratings_avgs, by=c("speaker", "med_con"))
+
+```
+
+
+Subsets per condition
+
+
+```{r, message = FALSE, warning = FALSE}
+
+data_broad_CON <- filter(data_broad_new, med_con %in% c('Control'))
+data_broad_medOFF <- filter(data_broad_new, med_con %in% c('med-OFF'))
+data_broad_medON <- filter(data_broad_new, med_con %in% c('med-ON'))
+data_broad_DBSON <- filter(data_broad_new, med_con %in% c('med-OFF/DBS-ON'))
+
+```
+
+
+# Statistical analysis: What explains reduced intelligibility?
+
+Acoustic vowel duration ~ Intelligibility
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=V1dur, y=Intell)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+ Calculate correlation coefficient between V1.dur and Intell
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Intell) # p = 0.6589
+shapiro.test(data_broad_CON$V1dur) # p = 0.9035
+
+cor.test(data_broad_CON$Intell, data_broad_CON$V1dur, method = "pearson") ## r(11) = -0.71, p = 0.005784
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Intell) # p = 0.6707
+shapiro.test(data_broad_medOFF$V1dur) # p = 0.2911
+
+cor.test(data_broad_medOFF$Intell, data_broad_medOFF$V1dur, method = "pearson") ## r(11) = 0.41, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Intell) # p = 0.901
+shapiro.test(data_broad_medON$V1dur) # p =  0.6339
+
+cor.test(data_broad_medON$Intell, data_broad_medON$V1dur, method = "pearson") ## r(11) = 0.26, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Intell) # p = 0.5078
+shapiro.test(data_broad_DBSON$V1dur) # p =  0.1725
+
+cor.test(data_broad_DBSON$Intell, data_broad_DBSON$V1dur, method = "pearson") ## r(11) = 0.20, n.s.
+```
+
+VAI ~ Intelligibility
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=VAI_meas, y=Intell)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and Intell
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Intell) # p = 0.6589
+shapiro.test(data_broad_CON$VAI_meas) # p = 0.8711
+
+cor.test(data_broad_CON$Intell, data_broad_CON$VAI_meas, method = "pearson") ## r(11) = 0.29, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Intell) # p = 0.6707
+shapiro.test(data_broad_medOFF$VAI_meas) # p = 0.1916
+
+cor.test(data_broad_medOFF$Intell, data_broad_medOFF$VAI_meas, method = "pearson") ## r(11) = 0.39, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Intell) # p = 0.901
+shapiro.test(data_broad_medON$VAI_meas) # p = 0.9495
+
+cor.test(data_broad_medON$Intell, data_broad_medON$VAI_meas, method = "pearson") ## r(11) = -0.04, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Intell) # p = 0.5078
+shapiro.test(data_broad_DBSON$VAI_meas) # p = 0.8099
+
+cor.test(data_broad_DBSON$Intell, data_broad_DBSON$VAI_meas, method = "pearson") ## r(11) = 0.51, n.s.
+```
+Vowel Formant F1 of /a/ ~ Intelligibility
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=F1_a, y=Intell)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between F1 of /a/ and Intell
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Intell) # p = 0.6589
+shapiro.test(data_broad_CON$F1_a) # p = 0.738
+
+cor.test(data_broad_CON$Intell, data_broad_CON$F1_a, method = "pearson") ## r(11) = 0.42, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Intell) # p = 0.6707
+shapiro.test(data_broad_medOFF$F1_a) # p = 0.2011
+
+cor.test(data_broad_medOFF$Intell, data_broad_medOFF$F1_a, method = "pearson") ## r(11) = 0.33, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Intell) # p = 0.901
+shapiro.test(data_broad_medON$F1_a) # p =  0.6268
+
+cor.test(data_broad_medON$Intell, data_broad_medON$F1_a, method = "pearson") ## r(11) = 0.20, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Intell) # p = 0.5078
+shapiro.test(data_broad_DBSON$F1_a) # p = 0.8548
+
+cor.test(data_broad_DBSON$Intell, data_broad_DBSON$F1_a, method = "pearson") ## r(11) = 0.61, p = 0.02776
+```
+
+
+Tongue Body Movement Duration ~ Intelligibility
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=GAI, y=Intell)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB duration and Intell
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Intell) # p = 0.6589
+shapiro.test(data_broad_CON$GAI) # p = 0.2974
+
+cor.test(data_broad_CON$Intell, data_broad_CON$GAI, method = "pearson") ## r(11) = -0.55, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Intell) # p = 0.6707
+shapiro.test(data_broad_medOFF$GAI) # p = 0.9314
+
+cor.test(data_broad_medOFF$Intell, data_broad_medOFF$GAI, method = "pearson") ## r(11) = 0.22, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Intell) # p = 0.901
+shapiro.test(data_broad_medON$GAI) # p = 0.04856
+
+cor.test(data_broad_medON$Intell, data_broad_medON$GAI, method = "pearson") ## r(11) = 0.41, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Intell) # p = 0.5078
+shapiro.test(data_broad_DBSON$GAI) # p =  0.0162
+
+cor.test(data_broad_DBSON$Intell, data_broad_DBSON$GAI, method = "spearman") ## r(11) = 0.38, n.s.
+```
+
+Tongue Body Movement Amplitude ~ Intelligibility
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=DISP, y=Intell)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB amplitude and Intell
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Intell) # p = 0.6589
+shapiro.test(data_broad_CON$DISP) # p =0.8572
+
+cor.test(data_broad_CON$Intell, data_broad_CON$DISP, method = "pearson") ## r(11) = -0.18, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Intell) # p = 0.6707
+shapiro.test(data_broad_medOFF$DISP) # p = 0.533
+
+cor.test(data_broad_medOFF$Intell, data_broad_medOFF$DISP, method = "pearson") ## r(11) = -0.10, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Intell) # p = 0.901
+shapiro.test(data_broad_medON$DISP) # p = 0.6523
+
+cor.test(data_broad_medON$Intell, data_broad_medON$DISP, method = "pearson") ## r(11) = -0.03, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Intell) # p = 0.5078
+shapiro.test(data_broad_DBSON$DISP) # p = 0.6201
+
+cor.test(data_broad_DBSON$Intell, data_broad_DBSON$DISP, method = "pearson") ## r(11) = 0.22, n.s.
+```
+
+
+# Statistical analysis: What explains reduced naturalness?
+
+Acoustic vowel duration ~ Naturalness
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=V1dur, y=Natur)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between V1.dur and Natur
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Natur) # p = 0.6193
+shapiro.test(data_broad_CON$V1dur) # p = 0.9035
+
+cor.test(data_broad_CON$Natur, data_broad_CON$V1dur, method = "pearson") ## r(11) = -0.63, p = 0.02011
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Natur) # p = 0.005287
+shapiro.test(data_broad_medOFF$V1dur) # p = 0.2911
+
+cor.test(data_broad_medOFF$Natur, data_broad_medOFF$V1dur, method = "spearman") ## r(11) = -0.14, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Natur) # p = 0.07829
+shapiro.test(data_broad_medON$V1dur) # p =  0.6339
+
+cor.test(data_broad_medON$Natur, data_broad_medON$V1dur, method = "pearson") ## r(11) = -0.74, p = 0.003535
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Natur) # p = 0.2251
+shapiro.test(data_broad_DBSON$V1dur) # p = 0.1725
+
+cor.test(data_broad_DBSON$Natur, data_broad_DBSON$V1dur, method = "pearson") ## r(11) = -0.71, p = 0.006716
+```
+
+VAI ~ Naturalness
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=VAI_meas, y=Natur)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and Natur
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Natur) # p = 0.6193
+shapiro.test(data_broad_CON$VAI_meas) # p = 0.8711
+
+cor.test(data_broad_CON$Natur, data_broad_CON$VAI_meas, method = "pearson") ## r(11) = 0.21, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Natur) # p = 0.005287
+shapiro.test(data_broad_medOFF$VAI_meas) # p = 0.1916
+
+cor.test(data_broad_medOFF$Natur, data_broad_medOFF$VAI_meas, method = "spearman") ## r(11) = 0.67, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Natur) # p = 0.07829
+shapiro.test(data_broad_medON$VAI_meas) # p = 0.9495
+
+cor.test(data_broad_medON$Natur, data_broad_medON$VAI_meas, method = "pearson") ## r(11) = 0.49, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Natur) # p = 0.2251
+shapiro.test(data_broad_DBSON$VAI_meas) # p = 0.8099
+
+cor.test(data_broad_DBSON$Natur, data_broad_DBSON$VAI_meas, method = "pearson") ## r(11) = 0.37, n.s.
+```
+
+Vowel Formant F1 of /a/ ~ Naturalness
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=F1_a, y=Natur)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between F1 of /a/ and Natur
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Natur) # p = 0.6193
+shapiro.test(data_broad_CON$F1_a) # p = 0.738
+
+cor.test(data_broad_CON$Natur, data_broad_CON$F1_a, method = "pearson") ## r(11) = 0.48, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Natur) # p = 0.005287
+shapiro.test(data_broad_medOFF$F1_a) # p = 0.2011
+
+cor.test(data_broad_medOFF$Natur, data_broad_medOFF$F1_a, method = "spearman") ## r(11) = 0.22, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Natur) # p = 0.07829
+shapiro.test(data_broad_medON$F1_a) # p = 0.6268
+
+cor.test(data_broad_medON$Natur, data_broad_medON$F1_a, method = "pearson") ## r(11) = -0.10, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Natur) # p = 0.2251
+shapiro.test(data_broad_DBSON$F1_a) # p = 0.8548
+
+cor.test(data_broad_DBSON$Natur, data_broad_DBSON$F1_a, method = "pearson") ## r(11) = 0.15, n.s.
+```
+
+
+Tongue Body Movement Duration ~ Naturalness
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=GAI, y=Natur)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB duration and Natur
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Natur) # p = 0.6193
+shapiro.test(data_broad_CON$GAI) # p = 0.2974
+
+cor.test(data_broad_CON$Natur, data_broad_CON$GAI, method = "pearson") ## r(11) = -0.40, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Natur) # p = 0.005287
+shapiro.test(data_broad_medOFF$GAI) # p = 0.9314
+
+cor.test(data_broad_medOFF$Natur, data_broad_medOFF$GAI, method = "spearman") ## r(11) = 0.15, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Natur) # p = 0.07829
+shapiro.test(data_broad_medON$GAI) # p = 0.04856
+
+cor.test(data_broad_medON$Natur, data_broad_medON$GAI, method = "pearson") ## r(11) = -0.77, p = 0.002103
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Natur) # p = 0.2251
+shapiro.test(data_broad_DBSON$GAI) # p = 0.0162
+
+cor.test(data_broad_DBSON$Natur, data_broad_DBSON$GAI, method = "spearman") ## r(11) = -0.25, n.s.
+```
+
+Tongue Body Movement Amplitude ~ Naturalness
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_broad_new, aes(x=DISP, y=Natur)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB amplitude and Natur
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## Controls
+shapiro.test(data_broad_CON$Natur) # p = 0.6193
+shapiro.test(data_broad_CON$DISP) # p =0.8572
+
+cor.test(data_broad_CON$Natur, data_broad_CON$DISP, method = "pearson") ## r(11) = -0.33, n.s.
+
+## med-OFF
+shapiro.test(data_broad_medOFF$Natur) # p = 0.005287
+shapiro.test(data_broad_medOFF$DISP) # p = 0.533
+
+cor.test(data_broad_medOFF$Natur, data_broad_medOFF$DISP, method = "spearman") ## r(11) = -0.10, n.s.
+
+## med-ON
+shapiro.test(data_broad_medON$Natur) # p = 0.07829
+shapiro.test(data_broad_medON$DISP) # p = 0.6523
+
+cor.test(data_broad_medON$Natur, data_broad_medON$DISP, method = "pearson") ## r(11) = -0.31, n.s.
+
+## DBS-ON
+shapiro.test(data_broad_DBSON$Natur) # p = 0.2251
+shapiro.test(data_broad_DBSON$DISP) # p = 0.6201
+
+cor.test(data_broad_DBSON$Natur, data_broad_DBSON$DISP, method = "pearson") ## r(11) = -0.11, n.s.
+```
+
+# Correlation between other parameters:
+
+all focus conditions are considered
+
+Subsets per group/ treatment condition
+
+```{r, message = FALSE, warning = FALSE}
+
+data_CON <- filter(data_new, med_con %in% c('Control'))
+data_medOFF <- filter(data_new, med_con %in% c('med-OFF'))
+data_medON <- filter(data_new, med_con %in% c('med-ON'))
+data_DBSON <- filter(data_new, med_con %in% c('med-OFF/DBS-ON'))
+
+```
+
+
+# Which factors are responsible for longer acoustic durations
+
+Acoustic vowel duration ~ TB DUR
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=V1dur, y=GAI)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between V1.dur and TB DUR
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$GAI) # p = 0.1508
+shapiro.test(data_medOFF$V1dur) # p =  0.07116
+
+cor.test(data_medOFF$GAI, data_medOFF$V1dur, method = "pearson") ## r(37) = 0.90, p < .001
+
+## med-ON
+shapiro.test(data_medON$GAI) # p = 5.182e-05
+shapiro.test(data_medON$V1dur) # p = 0.8247
+
+cor.test(data_medON$GAI, data_medON$V1dur, method = "spearman") ## r(37) = 0.87, p < .001
+
+## DBS-ON
+shapiro.test(data_DBSON$GAI) # p = 0.0004434
+shapiro.test(data_DBSON$V1dur) # p = 0.05746
+
+cor.test(data_DBSON$GAI, data_DBSON$V1dur, method = "spearman") ## r(37) = 0.87, p < .001
+```
+
+# Which factors are responsible for smaller VAI values?
+
+VAI ~ UPDRS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=VAI_meas, y=UPDRS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and UPDRS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$VAI_meas) # p = 0.0165
+shapiro.test(data_medOFF$UPDRS) # p = 0.0153
+
+cor.test(data_medOFF$VAI_meas, data_medOFF$UPDRS, method = "spearman") ## r(37) = -0.38, p = 0.01662
+
+## med-ON
+shapiro.test(data_medON$VAI_meas) # p = 0.8574
+shapiro.test(data_medON$UPDRS) # p = 0.004
+
+cor.test(data_medON$VAI_meas, data_medON$UPDRS, method = "spearman") ## r(37) = -0.25, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$VAI_meas) # p = 0.8184
+shapiro.test(data_DBSON$UPDRS) # p = 0.006692
+
+cor.test(data_DBSON$VAI_meas, data_DBSON$UPDRS, method = "spearman") ## r(37) = -0.22, n.s.
+```
+
+VAI ~ axial symptoms
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=VAI_meas, y=axial)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and axial subscores
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$VAI_meas) # p = 0.0165
+shapiro.test(data_medOFF$axial) # p = 1.661e-07
+
+cor.test(data_medOFF$VAI_meas, data_medOFF$axial, method = "spearman") ## r(37) = -0.59, p = 7.198e-05
+
+## med-ON
+shapiro.test(data_medON$VAI_meas) # p = 0.8574
+shapiro.test(data_medON$axial) # p = 9.958e-08
+
+cor.test(data_medON$VAI_meas, data_medON$axial, method = "spearman") ## r(37) = -0.15, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$VAI_meas) # p = 0.8184
+shapiro.test(data_DBSON$axial) # p = 0.003841
+
+cor.test(data_DBSON$VAI_meas, data_DBSON$axial, method = "spearman") ## r(37) = -0.29, n.s.
+```
+
+VAI ~ bradykinesia symptoms
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=VAI_meas, y=brady)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and brady subscores
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$VAI_meas) # p = 0.0165
+shapiro.test(data_medOFF$brady) # p = 0.00371
+
+cor.test(data_medOFF$VAI_meas, data_medOFF$brady, method = "spearman") ## r(37) = -0.39, p = 0.01534
+
+## med-ON
+shapiro.test(data_medON$VAI_meas) # p = 0.8574
+shapiro.test(data_medON$brady) # p =  0.001562
+
+cor.test(data_medON$VAI_meas, data_medON$brady, method = "spearman") ## r(37) = -0.04, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$VAI_meas) # p = 0.8184
+shapiro.test(data_DBSON$brady) # p = 0.0001026
+
+
+cor.test(data_DBSON$VAI_meas, data_DBSON$brady, method = "spearman") ## r(37) = -0.15, n.s.
+```
+
+VAI ~ symptoms of Posture and Gait
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=VAI_meas, y=PIGD)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and PIGD
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$VAI_meas) # p = 0.0165
+shapiro.test(data_medOFF$PIGD) # p =  8.088e-07
+
+cor.test(data_medOFF$VAI_meas, data_medOFF$PIGD, method = "spearman") ## r(37) = -0.55, p = 0.0002896
+
+## med-ON
+shapiro.test(data_medON$VAI_meas) # p = 0.8574
+shapiro.test(data_medON$PIGD) # p = 4.312e-07
+
+cor.test(data_medON$VAI_meas, data_medON$PIGD, method = "spearman") ## r(37) = -0.21, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$VAI_meas) # p = 0.8184
+shapiro.test(data_DBSON$PIGD) # p = 0.000613
+
+cor.test(data_DBSON$VAI_meas, data_DBSON$PIGD, method = "spearman") ## r(37) = -0.33, p = 0.04325
+```
+
+## What parameters affect axial symptoms?
+
+TB DURATION ~ axial symptoms
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=GAI, y=axial)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and axial subscores
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$GAI) # p = 0.1508
+shapiro.test(data_medOFF$axial) # p = 1.661e-07
+
+cor.test(data_medOFF$GAI, data_medOFF$axial, method = "spearman") ## r(37) = -0.04, p = n.s.
+
+## med-ON
+shapiro.test(data_medON$GAI) # p = 5.182e-05
+shapiro.test(data_medON$axial) # p = 9.958e-08
+
+cor.test(data_medON$GAI, data_medON$axial, method = "spearman") ## r(37) = -0.39, p = 0.0146
+
+## DBS-ON
+shapiro.test(data_DBSON$GAI) # p = 0.0004434
+shapiro.test(data_DBSON$axial) # p = 0.003841
+
+cor.test(data_DBSON$GAI, data_DBSON$axial, method = "spearman") ## r(37) = -0.03, n.s.
+```
+
+TB AMPLITUDE ~ axial symptoms
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=DISP, y=axial)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB amplitude and axial subscores
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$DISP) # p = 0.2773
+shapiro.test(data_medOFF$axial) # p = 1.661e-07
+
+cor.test(data_medOFF$DISP, data_medOFF$axial, method = "spearman") ## r(37) = 0.32, p = 0.04804
+
+## med-ON
+shapiro.test(data_medON$DISP) # p = 0.5438
+shapiro.test(data_medON$axial) # p = 9.958e-08
+
+cor.test(data_medON$DISP, data_medON$axial, method = "spearman") ## r(37) = -0.06, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$DISP) # p = 0.1795
+shapiro.test(data_DBSON$axial) # p = 0.003841
+
+cor.test(data_DBSON$DISP, data_DBSON$axial, method = "spearman") ## r(37) = -0.02, n.s.
+```
+
+TB PVEL ~ axial symptoms
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=PVEL, y=axial)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB velocity and axial subscores
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$PVEL) # p = 0.2395
+shapiro.test(data_medOFF$axial) # p = 1.661e-07
+
+cor.test(data_medOFF$PVEL, data_medOFF$axial, method = "spearman") ## r(37) = 0.43, p =  0.006678
+
+## med-ON
+shapiro.test(data_medON$PVEL) # p = 0.308
+shapiro.test(data_medON$axial) # p = 9.958e-08
+
+cor.test(data_medON$PVEL, data_medON$axial, method = "spearman") ## r(37) = 0.22, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$PVEL) # p = 0.4773
+shapiro.test(data_DBSON$axial) # p = 0.003841
+
+cor.test(data_DBSON$PVEL, data_DBSON$axial, method = "spearman") ## r(37) = 0.05, n.s.
+```
+
+## What parameters affect self-perceived speaking ability of patients?
+
+Acoustic vowel duration ~ VAS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=V1dur, y=VAS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between V1.dur and VAS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$V1dur) # p = 0.07116
+shapiro.test(data_medOFF$VAS) # p = 0.008463
+
+cor.test(data_medOFF$V1dur, data_medOFF$VAS, method = "spearman") ## r(37) = 0.42, p = 0.007857
+
+## med-ON
+shapiro.test(data_medON$V1dur) # p = 0.8247
+shapiro.test(data_medON$VAS) # p = 5.054e-05
+
+cor.test(data_medON$V1dur, data_medON$VAS, method = "spearman") ## r(37) = 0.43, p = 0.006156
+
+## DBS-ON
+shapiro.test(data_DBSON$V1dur) # p = 0.05746
+shapiro.test(data_DBSON$VAS) # p = 0.0002832
+
+cor.test(data_DBSON$V1dur, data_DBSON$VAS, method = "spearman") ## r(37) = 0.56, p = 0.0002047
+```
+
+VAI ~ VAS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=VAI_meas, y=VAS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between VAI and VAS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$VAI_meas) # p = 0.0165
+shapiro.test(data_medOFF$VAS) # p = 0.008463
+
+cor.test(data_medOFF$VAI_meas, data_medOFF$VAS, method = "spearman") ## r(37) = 0.07, n.s.
+
+## med-ON
+shapiro.test(data_medON$VAI_meas) # p = 0.8574
+shapiro.test(data_medON$VAS) # p = 5.054e-05
+
+cor.test(data_medON$VAI_meas, data_medON$VAS, method = "spearman") ## r(37) = 0.17, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$VAI_meas) # p = 0.8184
+shapiro.test(data_DBSON$VAS) # p =0.0002832
+
+cor.test(data_DBSON$VAI_meas, data_DBSON$VAS, method = "spearman") ## r(37) = 0.37, p = 0.02161
+```
+
+
+TB DUR ~ VAS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=GAI, y=VAS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between TB DUR and VAS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+## med-OFF
+shapiro.test(data_medOFF$GAI) # p = 0.1508
+shapiro.test(data_medOFF$VAS) # p = 0.008463
+
+cor.test(data_medOFF$GAI, data_medOFF$VAS, method = "spearman") ## r(37) = 0.17, n.s.
+
+## med-ON
+shapiro.test(data_medON$GAI) # p = 5.182e-05
+shapiro.test(data_medON$VAS) # p = 5.054e-05
+
+cor.test(data_medON$GAI, data_medON$VAS, method = "spearman") ## r(37) = 0.25, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$GAI) # p = 0.0004434
+shapiro.test(data_DBSON$VAS) # p = 0.0002832
+
+cor.test(data_DBSON$GAI, data_DBSON$VAS, method = "spearman") ## r(37) = 0.61, p = 3.363e-05
+```
+
+UPDRS ~ VAS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=UPDRS, y=VAS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between UPDRS and VAS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$UPDRS) # p = 0.0153
+shapiro.test(data_medOFF$VAS) # p = 0.008463
+
+cor.test(data_medOFF$UPDRS, data_medOFF$VAS, method = "spearman") ## r(37) = -0.16, n.s.
+
+## med-ON
+shapiro.test(data_medON$UPDRS) # p = 0.004
+shapiro.test(data_medON$VAS) # p = 5.054e-05
+
+cor.test(data_medON$UPDRS, data_medON$VAS, method = "spearman") ## r(37) = -0.17, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$UPDRS) # p = 0.006692
+shapiro.test(data_DBSON$VAS) # p = 0.0002832
+
+cor.test(data_DBSON$UPDRS, data_DBSON$VAS, method = "spearman") ## r(37) = -0.58, p = 0.0001219
+```
+
+axial ~ VAS
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_new, aes(x=axial, y=VAS)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  facet_grid(.~med_con)
+
+```
+
+Calculate correlation coefficient between axial subscores and VAS
+ 
+```{r, message = FALSE, warning = FALSE}
+
+
+## med-OFF
+shapiro.test(data_medOFF$axial) # p = 1.661e-07
+shapiro.test(data_medOFF$VAS) # p = 0.008463
+
+cor.test(data_medOFF$axial, data_medOFF$VAS, method = "spearman") ## r(37) = -0.04, n.s.
+
+## med-ON
+shapiro.test(data_medON$axial) # p = 9.958e-08
+shapiro.test(data_medON$VAS) # p = 5.054e-05
+
+cor.test(data_medON$axial, data_medON$VAS, method = "spearman") ## r(37) = -0.28, n.s.
+
+## DBS-ON
+shapiro.test(data_DBSON$axial) # p = 0.003841
+shapiro.test(data_DBSON$VAS) # p = 0.0002832
+
+cor.test(data_DBSON$axial, data_DBSON$VAS, method = "spearman") ## r(37) = -0.43, p = 0.005977
+```
+
+
+## Correlations OFF to OFF change
+
+Reported under section 10.2.4.
+
+Combine data frames and subset for relevant conditions
+
+```{r, message = FALSE, warning = FALSE}
+
+data_PD <- filter(data_new, med_con != c('Control'))
+data_PD <- merge(data_PD, LEDD, by="speaker")
+
+data_medOFF <-  filter(data_PD, med_con %in% c('med-OFF'))
+data_DBSOFF <-  filter(data_PD, med_con %in% c('med-OFF/DBS-OFF'))
+
+```
+
+Calculate means per condition
+
+```{r, message = FALSE, warning = FALSE}
+
+medOFF_avgs <- data_medOFF %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_medOFF = mean(UPDRS, na.rm = T),
+            axial_medOFF = mean(axial, na.rm = T),
+            rigid_medOFF = mean(rigid, na.rm = T),
+            brady_medOFF = mean(brady, na.rm = T),
+            PIGD_medOFF = mean(PIGD, na.rm = T),
+            
+            GAI_medOFF = mean(GAI, na.rm = T),
+            PVEL_medOFF = mean(PVEL, na.rm = T),
+            DISP_medOFF = mean(DISP, na.rm = T),
+
+            LEDD_medOFF = mean(LEDD_preop, na.rm = T),
+            agonists_medOFF = mean(Agonists_preop, na.rm = T),
+            time_agonist_medOFF = mean(last_agonist_preop, na.rm = T),
+            time_visits = mean(Time_preop_postop))
+
+DBSOFF_avgs <- data_DBSOFF  %>% 
+  group_by(speaker) %>% 
+  summarise(UPDRS_DBSOFF = mean(UPDRS, na.rm = T),
+            axial_DBSOFF = mean(axial, na.rm = T),
+            rigid_DBSOFF = mean(rigid, na.rm = T),
+            brady_DBSOFF = mean(brady, na.rm = T),
+            PIGD_DBSOFF = mean(PIGD, na.rm = T),
+            
+            GAI_DBSOFF = mean(GAI, na.rm = T),
+            PVEL_DBSOFF = mean(PVEL, na.rm = T),
+            DISP_DBSOFF = mean(DISP, na.rm = T),
+            
+            LEDD_DBSOFF = mean(LEDD_postop, na.rm = T),
+            agonists_DBSOFF = mean(Agonists_postop, na.rm = T),
+            time_agonist_DBSOFF = mean(last_agonist_postop, na.rm = T))
+
+data_change <- inner_join(medOFF_avgs, DBSOFF_avgs, by= c("speaker"))
+
+```
+
+Calculate absolute and percentage change
+
+```{r, message = FALSE, warning = FALSE}
+
+data_change$UPDRS_abs <- (data_change$UPDRS_medOFF - data_change$UPDRS_DBSOFF) * -1
+data_change$UPDRS_perc <- (data_change$UPDRS_medOFF - data_change$UPDRS_DBSOFF)/data_change$UPDRS_medOFF * 100
+
+data_change$axial_abs <- (data_change$axial_medOFF - data_change$axial_DBSOFF) * -1
+data_change$axial_perc <- (data_change$axial_medOFF - data_change$axial_DBSOFF)/data_change$axial_medOFF * 100
+
+data_change$brady_abs <- (data_change$brady_medOFF - data_change$brady_DBSOFF) * -1
+data_change$brady_perc <- (data_change$brady_medOFF - data_change$brady_DBSOFF)/data_change$brady_medOFF * 100
+
+data_change$PIGD_abs <- (data_change$PIGD_medOFF - data_change$PIGD_DBSOFF) * -1
+data_change$PIGD_perc <- (data_change$PIGD_medOFF - data_change$PIGD_DBSOFF)/data_change$PIGD_medOFF * 100
+
+data_change$DISP_abs <- (data_change$DISP_medOFF - data_change$DISP_DBSOFF) * -1
+data_change$DISP_perc <- (data_change$DISP_medOFF - data_change$DISP_DBSOFF)/data_change$DISP_medOFF * 100
+
+data_change$PVEL_abs <- (data_change$PVEL_medOFF - data_change$PVEL_DBSOFF) * -1
+data_change$PVEL_perc <- (data_change$PVEL_medOFF - data_change$PVEL_DBSOFF)/data_change$PVEL_medOFF * 100
+
+data_change$LEDD_abs <- (data_change$LEDD_medOFF - data_change$LEDD_DBSOFF) * -1
+data_change$LEDD_perc <- (data_change$LEDD_medOFF - data_change$LEDD_DBSOFF)/data_change$LEDD_medOFF * 100
+
+data_change$agonists_abs <- (data_change$agonists_medOFF - data_change$agonists_DBSOFF) * -1
+data_change$agonists_perc <- (data_change$agonists_medOFF - data_change$agonists_DBSOFF)/data_change$agonists_medOFF * 100
+
+```
+
+Correlations
+
+
+Change in AGONISTS ~ CHANGE in TB AMPLITUDE
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_change, aes(x=time_visits, y=UPDRS_abs))+
+  geom_hline(yintercept=0, linetype="dashed", color = "gray", size=1)+
+  geom_point(size = 5)+
+  geom_smooth(method=lm, se=FALSE, size = 2)+
+  geom_text(aes(label = speaker), vjust = -.9, size = 6)+
+  annotate("text", x = 16, y = 16, label = "r = -0.58, p = 0.047", size = 9, color = "darkgray")+
+  theme_classic() +
+  ylab("Absolute change of UPDRS scores")+
+  xlab("Time (in months)")+
+  ylim(-12,20)+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 20)))
+
+shapiro.test(data_change$time_visits) # p = 0.06089
+shapiro.test(data_change$UPDRS_abs) # p = 0.4317
+
+## TIME since first visit and absolute UPDRS change 
+cor.test(data_change$time_visits, data_change$UPDRS_abs, method = "pearson") #  r = 0.5813031, p-value = 0.04744
+
+```
+
+Change in AGONISTS ~ CHANGE in TB AMPLITUDE
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_change, aes(x=agonists_perc, y=DISP_perc)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+shapiro.test(data_change$agonists_perc) # p = 0.1761
+shapiro.test(data_change$DISP_perc) # p = 0.5628
+
+cor.test(data_change$DISP_perc, data_change$agonists_perc, method = "pearson") ## r = -0.25, n.s.
+
+```
+
+Change in UPDRS ~ CHANGE in TB AMPLITUDE
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_change, aes(x=UPDRS_abs, y=DISP_abs)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+    geom_text(aes(label = speaker), vjust = -.9, size = 6)
+
+shapiro.test(data_change$UPDRS_perc) # p = 0.1191
+shapiro.test(data_change$DISP_perc) # p = 0.5628
+
+cor.test(data_change$DISP_perc, data_change$UPDRS_perc, method = "pearson") ## r = 0.47, n.s.
+
+```
+Change in axial ~ CHANGE in TB AMPLITUDE
+
+```{r, message = FALSE, warning = FALSE}
+
+ggplot(data_change, aes(x=axial_perc, y=DISP_perc)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+shapiro.test(data_change$axial_perc) # p = 0.001338
+shapiro.test(data_change$DISP_perc) # p = 0.5628
+
+cor.test(data_change$DISP_perc, data_change$axial_perc, method = "spearman") ## r = -0.16, n.s.
+
+```

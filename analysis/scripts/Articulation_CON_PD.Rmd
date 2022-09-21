@@ -1,0 +1,510 @@
+---
+title: "Articulatory Analysis"
+author: "Tabea Thies"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Analysis of tongue body movements comparing healthy controls and speakers with PD
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages
+
+```{r load_tidyverse, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+library(lmerTest)
+library(merTools)
+library(sjPlot)
+library(sjmisc)
+```
+
+Load data set
+
+```{r load_counts, message = FALSE, warning = FALSE}
+data <- read_csv('../data/articulation.csv')
+```
+
+Create subset for the comparison Controls vs PD (in med-OFF)
+
+```{r, message = FALSE, warning = FALSE}
+data_red <-  filter(data, med_con %in% c('Control', 'med-OFF'))
+```
+
+# Movement duration
+
+Descriptive stats for reporting values in Section 6.2.3
+
+```{r, message = FALSE, warning = FALSE}
+
+DUR_stats <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(GAI_V1)),
+            SD = round(sd(GAI_V1)))
+DUR_stats 
+
+DUR_stats2 <- data_red %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(GAI_V1)),
+            SD = round(sd(GAI_V1)))
+DUR_stats2
+
+```
+Plot tongue body movement duration
+
+```{r, message = FALSE, warning = FALSE}
+
+DUR_stats2 %>% 
+  ggplot(aes(x=med_con, y=M, group = focus_con)) + 
+  geom_line(linetype="dashed", color="gray", size=2)+
+  geom_point(size = 14, aes(color = focus_con))+
+  theme_classic() +
+  theme(legend.position = 'none')+
+  theme(legend.title = element_blank(),
+        legend.text = element_text(size = 36))+
+  scale_color_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
+  xlab(NULL) +
+  scale_x_discrete(labels = c('CON','PD'))+
+  coord_cartesian(ylim = c(155, 205)) + 
+  scale_y_continuous(breaks = seq(160, 200, 10)) +
+  ylab("Duration (ms)")+
+  theme(axis.title.y = element_text(face = 'bold', size = 42, margin = margin(r = 30)))+
+  theme(strip.text.x = element_text(size=38, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 36),
+        axis.text.y = element_text(size = 36)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+        
+```
+Create linear mixed model to investigate disease effect on TB duration
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl <- lmer(GAI_V1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model summary
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl)
+
+```
+
+extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl)
+
+```
+
+# Movement amplitude
+
+Descriptive stats for reporting values in Section 6.2.3
+
+```{r, message = FALSE, warning = FALSE}
+
+DISPL_stats <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(disp_V1_abs),1),
+            SD = round(sd(disp_V1_abs),1))
+DISPL_stats 
+
+DISPL_stats2 <- data_red %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(disp_V1_abs),1),
+            SD = round(sd(disp_V1_abs),1))
+DISPL_stats2
+
+```
+Plot tongue body movement amplitude
+
+```{r, message = FALSE, warning = FALSE}
+
+DISPL_stats2 %>% 
+  ggplot(aes(x=med_con, y=M, group = focus_con)) + 
+  geom_line(linetype="dashed", color="gray", size=2)+
+  geom_point(size = 14, aes(color = focus_con))+
+  theme_classic() +
+  theme(legend.position = 'none')+
+  theme(legend.title = element_blank(),
+        legend.text = element_text(size = 36))+
+  scale_color_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
+  coord_cartesian(ylim = c(6.3, 8.2)) + 
+  scale_y_continuous(breaks = seq(6.5, 8, 0.5)) +
+  xlab(NULL) +
+  scale_x_discrete(labels = c('CON','PD'))+
+  ylab("Amplitude (mm)")+
+  theme(axis.title.y = element_text(face = 'bold', size = 42, margin = margin(r = 30)))+
+  theme(strip.text.x = element_text(size=38, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 36),
+        axis.text.y = element_text(size = 36)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+        
+``` 
+Create linear mixed model to investigate disease effect on TB amplitude
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl2 <- lmer(disp_V1_abs ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model summary
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl2)
+
+```
+
+extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl2)
+
+```
+
+## Explore random effects with function REsim
+Effects for individual levels are simulated\
+Output: mean, median and sd of the random effect estimates\
+
+Plots estimated random effects for each participant\
+95 % Intervals that do not overlap zero are bold
+
+```{r, message = FALSE, warning = FALSE}
+randoms <- REsim(mdl2) 
+plotREsim(randoms)
+
+```
+
+Plot estimated 95 % interval spans for the intercept of TB amplitude
+
+```{r, message = FALSE, warning = FALSE}
+
+random2 <- subset(randoms, term == "(Intercept)")
+
+random2 %>% 
+  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_point(size = 5)+
+  geom_errorbar(size = 1) +
+  theme_classic()+
+  xlab('95 % intervals of estimated random intercepts for TB amplitude') +
+  ylab('Speaker')+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
+  theme(strip.text.x = element_text(size=18, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())+
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18))
+
+```
+
+# Movement peak velocities
+
+Descriptive stats for reporting values in Section 6.2.3
+
+```{r, message = FALSE, warning = FALSE}
+
+PVEL_stats <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(pvel_V1_abs)),
+            SD = round(sd(pvel_V1_abs)))
+PVEL_stats 
+
+PVEL_stats2 <- data_red %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(pvel_V1_abs)),
+            SD = round(sd(pvel_V1_abs)))
+PVEL_stats2
+
+```
+Create linear mixed model to investigate disease effect on TB velocity
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl3 <- lmer(pvel_V1_abs ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model summary
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl3)
+
+```
+
+extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl3)
+
+```
+
+
+## Explore random effects with function REsim
+
+
+```{r, message = FALSE, warning = FALSE}
+randoms <- REsim(mdl3) 
+plotREsim(randoms)
+
+```
+
+Plot estimated 95 % interval spans for the intercept of TB velocity
+
+```{r, message = FALSE, warning = FALSE}
+
+random2 <- subset(randoms, term == "(Intercept)")
+
+random2 %>% 
+  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_point(size = 5)+
+  geom_errorbar(size = 1) +
+  theme_classic()+
+  xlab('95 % intervals of estimated random intercepts for TB velocity') +
+  ylab('Speaker')+
+  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
+  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
+  theme(strip.text.x = element_text(size=18, face="bold"),
+        strip.background = element_blank())+
+  theme(axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  theme(axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())+
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18))
+
+```
+
+# Movement Profiles
+
+Descriptive stats for reporting values in Table\
+
+Subset for production of vowels /a/ and /i/
+
+```{r, message = FALSE, warning = FALSE}
+
+data_red_i_a <-  filter(data_red, vowel %in% c('i', 'a'))
+
+```
+
+Acceleration phase
+
+```{r, message = FALSE, warning = FALSE}
+
+ACC_stats <- data_red_i_a %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(acc_V1)),
+            SD = round(sd(acc_V1)))
+ACC_stats 
+
+ACC_stats2 <- data_red_i_a %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(acc_V1)),
+            SD = round(sd(acc_V1)))
+ACC_stats2
+
+```
+
+Deceleration phase
+
+```{r, message = FALSE, warning = FALSE}
+
+DEC_stats <- data_red_i_a %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(dec_V1)),
+            SD = round(sd(dec_V1)))
+DEC_stats 
+
+DEC_stats2 <- data_red_i_a %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(dec_V1)),
+            SD = round(sd(dec_V1)))
+DEC_stats2
+
+```
+
+Symmetry profile
+
+```{r, message = FALSE, warning = FALSE}
+
+SYMM_stats <- data_red_i_a %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(symmetry_V1),1),
+            SD = round(sd(symmetry_V1),1))
+SYMM_stats 
+
+SYMM_stats2 <- data_red_i_a %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(symmetry_V1),1),
+            SD = round(sd(symmetry_V1),1))
+SYMM_stats2
+
+```
+
+Stiffness
+
+```{r, message = FALSE, warning = FALSE}
+
+STIFF_stats <- data_red_i_a %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(stiffness_V1_abs),1),
+            SD = round(sd(stiffness_V1_abs),1))
+STIFF_stats 
+
+STIFF_stats2 <- data_red_i_a %>% 
+  group_by(med_con, focus_con) %>% 
+  summarise(M = round(mean(stiffness_V1_abs),1),
+            SD = round(sd(stiffness_V1_abs),1))
+STIFF_stats2
+
+```
+
+# Timing pattern
+
+```{r, message = FALSE, warning = FALSE}
+
+ONS_avgs <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(onsC1_to_onsV1)),
+            SD = round(sd(onsC1_to_onsV1)))
+ONS_avgs
+
+TARG_avgs <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(targC1_to_targV1)),
+            SD = round(sd(targC1_to_targV1)))
+TARG_avgs
+
+OnsAlign_avgs <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(onsV1.syll.dur),2)*100,
+            SD = round(sd(onsV1.syll.dur),2)*100)
+OnsAlign_avgs
+
+TargAlign_avgs <- data_red %>% 
+  group_by(med_con) %>% 
+  summarise(M = round(mean(targV1.syll.dur),2)*100,
+            SD = round(sd(targV1.syll.dur),2)*100)
+TargAlign_avgs
+
+```
+
+Statistical analysis for timing patterns
+
+create model for onset to onset interval
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl4 <- lmer(onsC1_to_onsV1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl4)
+
+```
+
+Extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl4)
+
+```
+
+create model for target to target interval
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl5 <- lmer(targC1_to_targV1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl5)
+
+```
+
+Extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl5)
+
+```
+
+create model for onset alignment
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl6 <- lmer(onsV1.syll.dur ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl6)
+
+```
+
+Extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl6)
+
+```
+
+create model for target alignment
+
+```{r, message = FALSE, warning = FALSE}
+
+mdl7 <- lmer(targV1.syll.dur ~ med_con + focus_con + vowel + cons + age + (1 + focus_con|speaker), data_red, REML = FALSE)
+
+```
+
+Look at model
+
+```{r, message = FALSE, warning = FALSE}
+
+summary(mdl7)
+
+```
+
+Extracting fit statistics for reporting in text
+
+```{r, message = FALSE, warning = FALSE}
+
+tab_model(mdl7)
+
+```
