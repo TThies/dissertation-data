@@ -16,6 +16,9 @@ Load necessary packages
 ```{r load_tidyverse, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(ggplot2)
+library(dplyr)
+library(ggbeeswarm)
+library(ggsignif)
 ```
 
 Load data set
@@ -26,7 +29,7 @@ data <- read_csv('../data/acoustics.csv')
 
 Create subset for the comparison med-OFF vs DBS-OFF
 
-And delete data of PD03: n = 12
+And delete data of PD03, as he did not tolerate the DBS-OFF condition (n = 12)
 
 ```{r, message = FALSE, warning = FALSE}
 data_red <-  filter(data, med_con %in% c('med-OFF', 'med-OFF/DBS-OFF'))
@@ -34,7 +37,7 @@ data_red <-  filter(data, med_con %in% c('med-OFF', 'med-OFF/DBS-OFF'))
 data_red <- subset(data_red, speaker != "PD03")
 ```
 
-Descriptive stats for reporting values in Section 10.2.2
+Descriptive stats for reporting values in Table 10.1
 
 ```{r, message = FALSE, warning = FALSE}
 
@@ -62,95 +65,36 @@ library(lmerTest)
 library(sjPlot)
 library(sjmisc)
 library(merTools)
+library(emmeans)
+
+set.seed(42)
 ```
 
 Create model with lmer.
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(V1.dur ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-mdl <- lmer(V1.dur ~ med_con + focus_con + vowel + cons + age + (1 + focus_con + med_con|speaker), data_red, REML = FALSE)
-```
+mdl2 <- lmer(V1.dur ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model summary
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
-summary(mdl)
-```
+## check focus
 
-Extracting fit statistics for reporting in text
+mdl2b <- lmer(V1.dur ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl)
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 23.521, p = 7.808e-06
 
-## Explore random effects with function REsim
-Effects for individual levels are simulated\
-Output: mean, median and sd of the random effect estimates\
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-Plots estimated random effects for each participant\
-95 % Intervals that do not overlap zero are bold
+## check group
 
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl) 
-plotREsim(randoms)
+mdl2c <- lmer(V1.dur ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## group effect: X2(1) = 29.042, p = 7.082e-08
+
+emmeans(mdl2, specs = pairwise ~ med_con)
 
 ```
-
-Plot estimated 95 % interval spans for the intercept of acoustic vowel duration
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5, color = '#AD8A52')+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % interval spans of estimated random intercepts') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-Plot estimated 95 % interval spans for the slopes of acoustic vowel duration
-
-```{r, message = FALSE, warning = FALSE}
-
-random3 <- subset(randoms, term == "med_conmed-OFF/DBS-OFF")
-
-random3 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5, color = '#AD8A52')+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % interval spans of estimated random slopes') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-
-

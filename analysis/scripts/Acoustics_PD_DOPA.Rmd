@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# Analysis of levodopa effect of acoustic vowel duration in speakers with PD
+# Analysis of levodopa effect on acoustic vowel duration in speakers with PD
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -16,6 +16,9 @@ Load necessary packages
 ```{r load_tidyverse, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(ggplot2)
+library(dplyr)
+library(ggbeeswarm)
+library(ggsignif)
 ```
 
 Load data set
@@ -30,7 +33,7 @@ Create subset for the comparison med-OFF vs med-ON
 data_red <-  filter(data, med_con %in% c('med-OFF', 'med-ON'))
 ```
 
-Descriptive stats for reporting values in Section 7.2.2
+Descriptive stats for reporting values in Table 7.1 and Section 7.2.2
 
 ```{r, message = FALSE, warning = FALSE}
 
@@ -65,7 +68,7 @@ Plot means per group and focus condition (Figure 7.2)
 
 ```{r, message = FALSE, warning = FALSE, fig.height = 3, fig.width = 6,}
 
-V1_stats3 %>% 
+plot01 <- V1_stats3 %>% 
   ggplot(aes(x = med_con, y = M, group = speaker)) +
   geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
   geom_line(col = 'darkgrey') +
@@ -74,7 +77,7 @@ V1_stats3 %>%
   theme(legend.position = 'none')+
   scale_color_manual(values = c('#BE7592', '#74BDA0')) +
   coord_cartesian(ylim = c(70, 230)) + 
-  scale_y_continuous(breaks = seq(80, 220, 20)) +
+  scale_y_continuous(breaks = seq(80, 220, 40)) +
   xlab(NULL) +
   scale_x_discrete(labels = c('med-OFF','med-ON'))+
   ylab("Vowel Duration (ms)")+
@@ -85,6 +88,10 @@ V1_stats3 %>%
         axis.text.y = element_text(size = 22)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot01, filename = '../plots/V1_dur_PD_preop.png',
+       width = 12, height = 5, dpi = 300)
+
 ```
 
 # Statistical analysis
@@ -97,95 +104,34 @@ library(lmerTest)
 library(sjPlot)
 library(sjmisc)
 library(merTools)
+library(emmeans)
+
+set.seed(42)
 ```
 
 Create model with lmer.
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(V1.dur ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-mdl <- lmer(V1.dur ~ med_con + focus_con + vowel + cons + age + (1 + focus_con + med_con|speaker), data_red, REML = FALSE)
-```
+mdl2 <- lmer(V1.dur ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model summary
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
-summary(mdl)
-```
+## check focus
 
-Extracting fit statistics for reporting in text
+mdl2b <- lmer(V1.dur ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl)
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 20.403, p = 3.712e-05
 
-## Explore random effects with function REsim
-Effects for individual levels are simulated\
-Output: mean, median and sd of the random effect estimates\
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-Plots estimated random effects for each participant\
-95 % Intervals that do not overlap zero are bold
+## check group
 
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl) 
-plotREsim(randoms)
+mdl2c <- lmer(V1.dur ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 1.8629, p = 0.1723
 
 ```
-
-Plot estimated 95 % interval spans for the intercept of acoustic vowel duration
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5, color = '#74BDA0')+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % interval spans of estimated random intercepts') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-Plot estimated 95 % interval spans for the slopes of acoustic vowel duration
-
-```{r, message = FALSE, warning = FALSE}
-
-random3 <- subset(randoms, term == "med_conmed-ON")
-
-random3 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5, color = '#74BDA0')+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % interval spans of estimated random slopes') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-
-

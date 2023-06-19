@@ -20,6 +20,9 @@ library(lme4)
 library(lmerTest)
 library(merTools)
 library(sjPlot)
+library(emmeans)
+
+set.seed(42)
 
 ```
 
@@ -58,66 +61,28 @@ create linear mixed model
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(VAI_meas ~ med_con * focus_con + (1|speaker), data_CON_PD, REML = FALSE)
 
-mdl1 <- lmer(VAI_meas ~ med_con + focus_con + age + (1|speaker), data_CON_PD, REML = FALSE)
+mdl2 <- lmer(VAI_meas ~ med_con + focus_con + (1|speaker), data_CON_PD, REML = FALSE)
 
-```
+anova(mdl1, mdl2) ## no interaction
 
-Look at model summary
+## check focus
 
-```{r, message = FALSE, warning = FALSE}
+mdl2b <- lmer(VAI_meas ~ med_con + 1 + (1|speaker), data_CON_PD, REML = FALSE)
 
-summary(mdl1)
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 10.758, p = 0.004613
 
-Extracting fit statistics for reporting in text
+emmeans(mdl2a, specs = pairwise ~ focus_con)
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl1)
-```
+## check group
 
-## Explore random effects with function REsim
+mdl2c <- lmer(VAI_meas ~ 1 + focus_con + (1|speaker), data_CON_PD, REML = FALSE)
 
-Effects for individual levels are simulated\
-Output: mean, median and sd of the random effect estimates\
-
-Plots estimated random effects for each participant\
-95 % Intervals that do not overlap zero are bold
-
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl1) 
-plotREsim(randoms)
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 1.4369, p = 0.2306
 
 ```
-
-Plot estimated 95 % interval spans for the intercept of VAI values
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random intercepts for VAI') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
 
 # Create subset for the comparison med-OFF vs med-ON
 
@@ -148,133 +113,26 @@ create linear mixed model
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(VAI_meas ~ med_con * focus_con + (1|speaker), data_DOPA, REML = FALSE)
 
-mdl2 <- lmer(VAI_meas ~ med_con + focus_con + age + (1+med_con|speaker), data_DOPA, REML = FALSE)
+mdl2 <- lmer(VAI_meas ~ med_con + focus_con + (1|speaker), data_DOPA, REML = FALSE)
 
-```
+anova(mdl1, mdl2) ## no interaction
 
-Look at model summary
+## check focus
 
-```{r, message = FALSE, warning = FALSE}
+mdl2b <- lmer(VAI_meas ~ med_con + 1 + (1|speaker), data_DOPA, REML = FALSE)
 
-summary(mdl2)
-```
+anova(mdl2, mdl2b) ## no effect of focus: X2(2) = 3.9446, p = 0.1391
 
-Extracting fit statistics for reporting in text
+## check group
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl2)
-```
+mdl2c <- lmer(VAI_meas ~ 1 + focus_con + (1|speaker), data_DOPA, REML = FALSE)
 
-Explore random effects with function REsim
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 0.2405, p = 0.6238
 
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl2) 
-plotREsim(randoms)
 
-```
-
-Plot estimated 95 % interval spans for the intercept of VAI values
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random intercepts for VAI') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-Plot estimated 95 % interval spans for the slopes of VAI values
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random slopes for VAI') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-```
-
-# Create subset for the comparison med-OFF vs med-ON
-
-```{r, message = FALSE, warning = FALSE}
-
-data_DOPA <-  filter(data, med_con %in% c('med-OFF', 'med-ON'))
-```
-
-Descriptive stats for reporting values in Section 7.2.2
-
-```{r, message = FALSE, warning = FALSE}
-
-VAI_stats <- data_DOPA %>% 
-  group_by(med_con) %>% 
-  summarise(M = round(mean(VAI_meas,na.rm=T),2),
-            SD = round(sd(VAI_meas,na.rm=T), 2))
-VAI_stats
-
-VAI_stats2 <- data_DOPA %>% 
-  group_by(med_con, focus_con) %>% 
-  summarise(M = round(mean(VAI_meas,na.rm=T),2),
-            SD = round(sd(VAI_meas,na.rm=T), 2))
-VAI_stats2
-
-```
-
-create linear mixed model 
-
-```{r, message = FALSE, warning = FALSE}
-
-set.seed(42)
-
-mdl2 <- lmer(VAI_meas ~ med_con + focus_con + age + (1+med_con|speaker), data_DOPA, REML = FALSE)
-
-```
-
-Look at model summary
-
-```{r, message = FALSE, warning = FALSE}
-
-summary(mdl2)
-```
-
-Extracting fit statistics for reporting in text
-
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl2)
 ```
 
 # Create subset for the comparison DBS-OFF vs DBS-ON
@@ -309,23 +167,25 @@ create linear mixed model
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(VAI_meas ~ med_con * focus_con + (1|speaker), data_DBS, REML = FALSE)
 
-mdl3 <- lmer(VAI_meas ~ med_con + focus_con + age + (1+med_con|speaker), data_DBS, REML = FALSE)
+mdl2 <- lmer(VAI_meas ~ med_con + focus_con + (1|speaker), data_DBS, REML = FALSE)
 
-```
+anova(mdl1, mdl2) ## no interaction
 
-Look at model summary
+## check focus
 
-```{r, message = FALSE, warning = FALSE}
+mdl2b <- lmer(VAI_meas ~ med_con + 1 + (1|speaker), data_DBS, REML = FALSE)
 
-summary(mdl3)
-```
+anova(mdl2, mdl2b) ## no effect of focus: X2(2) = 1.9426 , p = 0.3786
 
-Extracting fit statistics for reporting in text
+## check group
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl3)
+mdl2c <- lmer(VAI_meas ~ 1 + focus_con + (1|speaker), data_DBS, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 0.4425, p = 0.5059
+
 ```
 
 # Create subset for the comparison med-OFF vs DBS-OFF
@@ -360,23 +220,26 @@ create linear mixed model
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(VAI_meas ~ med_con * focus_con + (1|speaker), data_OFF, REML = FALSE)
 
-mdl4 <- lmer(VAI_meas ~ med_con + focus_con + age + (1+med_con|speaker), data_OFF, REML = FALSE)
+mdl2 <- lmer(VAI_meas ~ med_con + focus_con + (1|speaker), data_OFF, REML = FALSE)
 
-```
+anova(mdl1, mdl2) ## no interaction
 
-Look at model summary
+## check focus
 
-```{r, message = FALSE, warning = FALSE}
+mdl2b <- lmer(VAI_meas ~ med_con + 1 + (1|speaker), data_OFF, REML = FALSE)
 
-summary(mdl4)
-```
+anova(mdl2, mdl2b) ## no effect of focus: X2(2) = 3.1722, p = 0.2047
 
-Extracting fit statistics for reporting in text
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl4)
+## check group
+
+mdl2c <- lmer(VAI_meas ~ 1 + focus_con + (1|speaker), data_OFF, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 0.3209 , p = 0.5711
+
 ```
 
 # Create subset for the comparison med-OFF vs DBS-ON
@@ -384,7 +247,7 @@ for the analysis if DOPA and DBS effects are different to baseline (med-OFF)
 
 ```{r, message = FALSE, warning = FALSE}
 
-data_DBS2 <-  filter(data, med_con %in% c('med-OFF', 'med-OFF/DBS-ON'))
+data_DBS2 <-  filter(data, med_con %in% c('med-OFF', 'med-ON', 'med-OFF/DBS-ON'))
 
 ```
 
@@ -410,22 +273,24 @@ create linear mixed model
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(VAI_meas ~ med_con * focus_con + (1|speaker), data_DBS2, REML = FALSE)
 
-mdl5 <- lmer(VAI_meas ~ med_con + focus_con + age + (1+med_con|speaker), data_DBS2, REML = FALSE)
+mdl2 <- lmer(VAI_meas ~ med_con + focus_con + (1|speaker), data_DBS2, REML = FALSE)
+
+anova(mdl1, mdl2) ## no interaction
+
+## check focus
+
+mdl2b <- lmer(VAI_meas ~ med_con + 1 + (1|speaker), data_DBS2, REML = FALSE)
+
+anova(mdl2, mdl2b) ## no effect of focus: X2(2) = 4.1614, p = 0.1248
+
+
+## check group
+
+mdl2c <- lmer(VAI_meas ~ 1 + focus_con + (1|speaker), data_DBS2, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 0.2806, p = 0.8691
 
 ```
-
-Look at model summary
-
-```{r, message = FALSE, warning = FALSE}
-
-summary(mdl5)
-```
-
-Extracting fit statistics for reporting in text
-
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl5)
-```
-

@@ -34,7 +34,7 @@ and exclude data of speaker PD03 because DBS-OFF condition is missing
 
 ```{r, message = FALSE, warning = FALSE}
 
-data_PD <-  filter(data, Group %in% c('medOFF', 'CON'))
+data_PD_CON <-  filter(data, Group %in% c('medOFF', 'CON'))
 
 data_DOPA <-  filter(data, Group %in% c('medOFF', 'medON'))
 
@@ -74,12 +74,12 @@ for testing difference of intelligibility
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit1 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_PD)
+#fit1 <- ocm(Intell ~ Group + (1|Speaker) + (1|Rater),
+            data = data_PD_CON)
 
-#save(fit1, file = '../models/Intell_mdl_PD.RData')
+#save(fit1, file = '../models/Intell_mdl_PD_CON.RData')
 
-load('../models/Intell_mdl_PD.RData')
+load('../models/Intell_mdl_PD_CON.RData')
 
 summary(fit1)
 ```
@@ -89,12 +89,12 @@ for testing difference of naturalness
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit2 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_PD)
+#fit2 <- ocm(Natural ~ Group + (1|Speaker) + (1|Rater), 
+            data = data_PD_CON)
 
-#save(fit2, file = '../models/Natural_mdl_PD.RData')
+#save(fit2, file = '../models/Natural_mdl_PD_CON.RData')
 
-load('../models/Natural_mdl_PD.RData')
+load('../models/Natural_mdl_PD_CON.RData')
 
 summary(fit2)
 
@@ -126,8 +126,8 @@ for testing difference of intelligibility
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit3 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DOPA)
+#fit3 <- ocm(Intell ~ Group + (1|Speaker) + (1|Rater),
+            data = data_DOPA)
 
 #save(fit3, file = '../models/Intell_mdl_DOPA.RData')
 
@@ -142,8 +142,8 @@ for testing difference of naturalness
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit4 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DOPA)
+#fit4 <- ocm(Natural ~ Group + (1|Speaker) + (1|Rater),
+            data = data_DOPA)
 
 #save(fit4, file = '../models/Natural_mdl_DOPA.RData')
 
@@ -179,8 +179,8 @@ for testing difference of intelligibility
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit5 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DBS)
+#fit5 <- ocm(Intell ~ Group + (1|Speaker) + (1|Rater),
+           data = data_DBS)
 
 #save(fit5, file = '../models/Intell_mdl_DBS.RData')
 
@@ -195,8 +195,8 @@ for testing difference of naturalness
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit6 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DBS)
+#fit6 <- ocm(Natural ~ Group + (1|Speaker) + (1|Rater),
+            data = data_DBS)
 
 #save(fit6, file = '../models/Natural_mdl_DBS.RData')
 
@@ -232,8 +232,8 @@ for testing difference of intelligibility
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit7 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_OFF)
+#fit7 <- ocm(Intell ~ Group + (1|Speaker) + (1|Rater),
+            data = data_OFF)
 
 #save(fit7, file = '../models/Intell_mdl_OFF.RData')
 
@@ -248,8 +248,8 @@ for testing difference of naturalness
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit8 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_OFF)
+#fit8 <- ocm(Natural ~ Group + (1|Speaker) + (1|Rater),
+            data = data_OFF)
 
 #save(fit8, file = '../models/Natural_mdl_OFF.RData')
 
@@ -286,8 +286,8 @@ for testing difference of intelligibility
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit9 <- ocm(Intell ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DBS2)
+#fit9 <- ocm(Intell ~ Group + (1|Speaker) + (1|Rater),
+            data = data_DBS2)
 
 #save(fit9, file = '../models/Intell_mdl_DBS2.RData')
 
@@ -302,8 +302,8 @@ for testing difference of naturalness
 
 ```{r, message = FALSE, warning = FALSE}
 
-#fit10 <- ocm(Natural ~ Group + vowel + cons + (1|Speaker) + (1|Rater),
-#            data = data_DBS2)
+#fit10 <- ocm(Natural ~ Group + (1|Speaker) + (1|Rater),
+            data = data_DBS2)
 
 #save(fit10, file = '../models/Natural_mdl_DBS2.RData')
 

@@ -2,10 +2,12 @@
 title: "Acoustic Analysis"
 author: "Tabea Thies"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-# Analysis of acoustic vowel duration comparing healthy controls and speakers with PD
+# Analysis of acoustic vowel duration comparing healthy controls and speakers with PD (med-OFF)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -16,12 +18,16 @@ Load necessary packages
 ```{r load_tidyverse, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(ggplot2)
+library(dplyr)
+library(ggbeeswarm)
+library(ggsignif)
 ```
 
 Load data set
 
 ```{r load_counts, message = FALSE, warning = FALSE}
 data <- read_csv('../data/acoustics.csv')
+
 ```
 
 Create subset for the comparison Controls vs PD (in med-OFF)
@@ -30,48 +36,43 @@ Create subset for the comparison Controls vs PD (in med-OFF)
 data_red <-  filter(data, med_con %in% c('Control', 'med-OFF'))
 ```
 
-Descriptive stats for reporting values in Section 6.2.2
-
-```{r, message = FALSE, warning = FALSE}
-
-V1_stats <- data_red %>% 
-  group_by(med_con) %>% 
-  summarise(M = round(mean(V1.dur)),
-            SD = round(sd(V1.dur)))
-V1_stats 
-
-V1_stats2 <- data_red %>% 
-  group_by(med_con, focus_con) %>% 
-  summarise(M = round(mean(V1.dur)),
-            SD = round(sd(V1.dur)))
-V1_stats2
-
-```
-
 Plot means per group and focus condition (Figure 6.1)
 
 ```{r, message = FALSE, warning = FALSE}
-V1_stats2 %>% 
-  ggplot(aes(x=med_con, y=M, group = focus_con, col=focus_con)) + 
-  geom_line(linetype="dashed", color="gray", size=1.5)+
-  geom_point(size = 10, aes(color = focus_con))+
+
+group_names <- as_labeller(
+     c(`Control` = "CON", `med-OFF` = "PD"))
+
+DUR_plot <- data_red %>% 
+  group_by(med_con, focus_con, speaker) %>% 
+  summarise(M = round(mean(V1.dur)),
+            SD = round(sd(V1.dur)))
+
+plot01 <- DUR_plot %>%
+  ggplot(aes(x=focus_con, y=M, fill=focus_con)) +
+  geom_boxplot(width=0.4, color="black", alpha=0.1, outlier.alpha = 0.1) +
+  stat_boxplot(geom = "errorbar", width = 0.1) + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1)+
   theme_classic() +
-  theme(legend.position = 'right')+
+  theme(legend.position = 'bottom')+
   theme(legend.title = element_blank(),
-        legend.text = element_text(size = 26))+
-  scale_color_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
+        legend.text = element_text(size = 28))+
+  scale_fill_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
   xlab(NULL) +
-  scale_x_discrete(labels = c('CON','PD'))+
+  facet_grid(.~med_con, labeller = group_names)+
   ylab("Vowel Duration (ms)")+
-  coord_cartesian(ylim = c(98, 140)) + 
-  scale_y_continuous(breaks = seq(100, 140, 10)) +
+  coord_cartesian(ylim = c(70, 210)) + 
+  scale_y_continuous(breaks = seq(80, 200, 40)) +
   theme(axis.title.y = element_text(face = 'bold', size = 30, margin = margin(r = 30)))+
   theme(strip.text.x = element_text(size=32, face="bold"),
         strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 28),
+  theme(axis.text.x = element_blank(),
         axis.text.y = element_text(size = 28)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot01, filename = '../plots/V1dur_CON_PD.png',
+       width = 12, height = 7, dpi = 300)
 ```
 
 # Statistical analysis
@@ -84,69 +85,37 @@ library(lmerTest)
 library(sjPlot)
 library(sjmisc)
 library(merTools)
+library(emmeans)
+
+set.seed(42)
 ```
 
 Create model with lmer
 
 ```{r, message = FALSE, warning = FALSE}
 
-set.seed(42)
+## interaction 
+mdl1 <- lmer(V1.dur ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-mdl <- lmer(V1.dur ~ med_con + focus_con + vowel + cons + age + (1 + focus_con|speaker), data_red, REML = FALSE)
-```
+mdl2 <- lmer(V1.dur ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model summary
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
-summary(mdl)
-```
+## check focus
 
-Extracting fit statistics for reporting in text
+mdl2b <- lmer(V1.dur ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```{r, message = FALSE, warning = FALSE}
-tab_model(mdl)
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 31.407, p = 1.514e-07
 
-## Explore random effects with function REsim
-Effects for individual levels are simulated\
-Output: mean, median and sd of the random effect estimates\
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-Plots estimated random effects for each participant\
-95 % Intervals that do not overlap zero are bold
+## check group
 
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl) 
-plotREsim(randoms)
+mdl2c <- lmer(V1.dur ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## group effect: X2(1) = 5.1666, p = 0.02303
+
+emmeans(mdl2, specs = pairwise ~ med_con)
+
 
 ```
-
-Plot estimated 95 % interval spans for the intercept of acoustic vowel duration
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random intercepts for vowel duration') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
-
-```
-
-
-

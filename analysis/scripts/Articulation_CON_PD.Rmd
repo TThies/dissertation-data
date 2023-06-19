@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# Analysis of tongue body movements comparing healthy controls and speakers with PD
+# Analysis of tongue body movements comparing healthy controls and speakers with PD (med-OFF)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -21,6 +21,9 @@ library(lmerTest)
 library(merTools)
 library(sjPlot)
 library(sjmisc)
+library(emmeans)
+
+set.seed(42)
 ```
 
 Load data set
@@ -54,54 +57,73 @@ DUR_stats2 <- data_red %>%
 DUR_stats2
 
 ```
+
 Plot tongue body movement duration
 
 ```{r, message = FALSE, warning = FALSE}
 
-DUR_stats2 %>% 
-  ggplot(aes(x=med_con, y=M, group = focus_con)) + 
-  geom_line(linetype="dashed", color="gray", size=2)+
-  geom_point(size = 14, aes(color = focus_con))+
+group_names <- as_labeller(
+     c(`Control` = "CON", `med-OFF` = "PD"))
+
+DUR_plot <- data_red %>% 
+  group_by(med_con, focus_con, speaker) %>% 
+  summarise(M = round(mean(GAI_V1)),
+            SD = round(sd(GAI_V1)))
+
+plot01 <- DUR_plot %>%
+  ggplot(aes(x=focus_con, y=M, fill=focus_con)) +
+  geom_boxplot(width=0.4, color="black", alpha=0.1, outlier.alpha = 0.1) +
+  stat_boxplot(geom = "errorbar", width = 0.1) + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1)+
   theme_classic() +
-  theme(legend.position = 'none')+
+  theme(legend.position = 'bottom')+
   theme(legend.title = element_blank(),
-        legend.text = element_text(size = 36))+
-  scale_color_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
+        legend.text = element_text(size = 38))+
+  scale_fill_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
   xlab(NULL) +
-  scale_x_discrete(labels = c('CON','PD'))+
-  coord_cartesian(ylim = c(155, 205)) + 
-  scale_y_continuous(breaks = seq(160, 200, 10)) +
+  facet_grid(.~med_con, labeller = group_names)+
   ylab("Duration (ms)")+
-  theme(axis.title.y = element_text(face = 'bold', size = 42, margin = margin(r = 30)))+
-  theme(strip.text.x = element_text(size=38, face="bold"),
+  coord_cartesian(ylim = c(135, 310)) + 
+  scale_y_continuous(breaks = seq(150, 300, 50)) +
+  theme(axis.title.y = element_text(face = 'bold', size = 34, margin = margin(r = 30)))+
+  theme(strip.text.x = element_text(size=32, face="bold"),
         strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 36),
-        axis.text.y = element_text(size = 36)) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 28)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot01, filename = '../plots/TB_DUR_CON_PD.png',
+       width = 12, height = 7, dpi = 300)
         
 ```
+
 Create linear mixed model to investigate disease effect on TB duration
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl <- lmer(GAI_V1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(GAI_V1 ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(GAI_V1 ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model summary
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
 
-summary(mdl)
+mdl2b <- lmer(GAI_V1 ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 25.423, p = 3.017e-06
 
-extracting fit statistics for reporting in text
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-```{r, message = FALSE, warning = FALSE}
+## check group
 
-tab_model(mdl)
+mdl2c <- lmer(GAI_V1 ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## group effect: X2(1) = 5.8087, p = 0.01595 *
+
+emmeans(mdl2, specs = pairwise ~ med_con)
 
 ```
 
@@ -124,95 +146,68 @@ DISPL_stats2 <- data_red %>%
 DISPL_stats2
 
 ```
+
 Plot tongue body movement amplitude
 
 ```{r, message = FALSE, warning = FALSE}
 
-DISPL_stats2 %>% 
-  ggplot(aes(x=med_con, y=M, group = focus_con)) + 
-  geom_line(linetype="dashed", color="gray", size=2)+
-  geom_point(size = 14, aes(color = focus_con))+
+DISPL_plot <- data_red %>% 
+  group_by(med_con, focus_con, speaker) %>% 
+  summarise(M = round(mean(disp_V1_abs),1),
+            SD = round(sd(disp_V1_abs),1))
+
+plot02 <- DISPL_plot %>%
+  ggplot(aes(x=focus_con, y=M, fill=focus_con)) +
+  geom_boxplot(width=0.4, color="black", alpha=0.1, outlier.alpha = 0.1) +
+  stat_boxplot(geom = "errorbar", width = 0.1) + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1)+
   theme_classic() +
-  theme(legend.position = 'none')+
+  theme(legend.position = 'bottom')+
   theme(legend.title = element_blank(),
-        legend.text = element_text(size = 36))+
-  scale_color_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
-  coord_cartesian(ylim = c(6.3, 8.2)) + 
-  scale_y_continuous(breaks = seq(6.5, 8, 0.5)) +
+        legend.text = element_text(size = 38))+
+  scale_fill_manual(values = c("#8da0cb", "#66c2a5", "#fc8d62")) +
   xlab(NULL) +
-  scale_x_discrete(labels = c('CON','PD'))+
+  facet_grid(.~med_con, labeller = group_names)+
   ylab("Amplitude (mm)")+
-  theme(axis.title.y = element_text(face = 'bold', size = 42, margin = margin(r = 30)))+
-  theme(strip.text.x = element_text(size=38, face="bold"),
+  coord_cartesian(ylim = c(3, 12.5)) + 
+  scale_y_continuous(breaks = seq(4, 12, 4)) +
+  theme(axis.title.y = element_text(face = 'bold', size = 34, margin = margin(r = 30)))+
+  theme(strip.text.x = element_text(size=32, face="bold"),
         strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 36),
-        axis.text.y = element_text(size = 36)) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 28)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
-        
+
+ggsave(plot02, filename = '../plots/TB_DISPL_CON_PD.png',
+       width = 12, height = 7, dpi = 300)
+
 ``` 
+
 Create linear mixed model to investigate disease effect on TB amplitude
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl2 <- lmer(disp_V1_abs ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(disp_V1_abs ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(disp_V1_abs ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model summary
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
 
-summary(mdl2)
+mdl2b <- lmer(disp_V1_abs ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+anova(mdl2, mdl2b) ## effect of focus: X2(2) = 10.968, p = 0.004153
 
-extracting fit statistics for reporting in text
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-```{r, message = FALSE, warning = FALSE}
+## check group
 
-tab_model(mdl2)
+mdl2c <- lmer(disp_V1_abs ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
-
-## Explore random effects with function REsim
-Effects for individual levels are simulated\
-Output: mean, median and sd of the random effect estimates\
-
-Plots estimated random effects for each participant\
-95 % Intervals that do not overlap zero are bold
-
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl2) 
-plotREsim(randoms)
-
-```
-
-Plot estimated 95 % interval spans for the intercept of TB amplitude
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random intercepts for TB amplitude') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
+anova(mdl2, mdl2c) ## no group effect: X2(1) = 0.6644, p = 0.415
 
 ```
 
@@ -235,65 +230,45 @@ PVEL_stats2 <- data_red %>%
 PVEL_stats2
 
 ```
+
 Create linear mixed model to investigate disease effect on TB velocity
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl3 <- lmer(pvel_V1_abs ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(pvel_V1_abs ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+mdl2 <- lmer(pvel_V1_abs ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl1, mdl2) ## no interaction
+
+## check focus
+
+mdl2b <- lmer(pvel_V1_abs ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2b) ## no effect of focus: X(2) = 1.9891, p = 0.3699
+
+## check group
+
+mdl2c <- lmer(pvel_V1_abs ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X(1) = 0.0298 , p = 0.8629
 
 ```
 
-Look at model summary
+# Create Multiplot for duration & amplitude
 
 ```{r, message = FALSE, warning = FALSE}
 
-summary(mdl3)
+library(grid)
+library(gridExtra)
+library(cowplot)
+library(lemon)
 
-```
-
-extracting fit statistics for reporting in text
-
-```{r, message = FALSE, warning = FALSE}
-
-tab_model(mdl3)
-
-```
-
-
-## Explore random effects with function REsim
-
-
-```{r, message = FALSE, warning = FALSE}
-randoms <- REsim(mdl3) 
-plotREsim(randoms)
-
-```
-
-Plot estimated 95 % interval spans for the intercept of TB velocity
-
-```{r, message = FALSE, warning = FALSE}
-
-random2 <- subset(randoms, term == "(Intercept)")
-
-random2 %>% 
-  ggplot(aes(x = mean, xmin = mean-sd-sd, xmax = mean+sd+sd, y = reorder(groupID, mean))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_point(size = 5)+
-  geom_errorbar(size = 1) +
-  theme_classic()+
-  xlab('95 % intervals of estimated random intercepts for TB velocity') +
-  ylab('Speaker')+
-  theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
-  theme(axis.title.x = element_text(face = 'bold', size = 18, margin = margin(t = 12)))+
-  theme(strip.text.x = element_text(size=18, face="bold"),
-        strip.background = element_blank())+
-  theme(axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18)) +
-  theme(axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 18))
+ggsave(filename = "../plots/TB_DUR_DISPL_CON_PD.png", 
+       grid_arrange_shared_legend(plot01, plot02, ncol=1, nrow=2,
+                    top = textGrob(" \nTongue Body Movement\n ",gp=gpar(fontsize=40,font="bold", margin(b = 20)))),
+       width = 18, height = 18, dpi = 300, units = "in", device='png')
 
 ```
 
@@ -363,6 +338,31 @@ SYMM_stats2
 
 ```
 
+Create linear mixed model to investigate disease effect on symmetry
+
+```{r, message = FALSE, warning = FALSE}
+
+## interaction 
+mdl1 <- lmer(symmetry_V1 ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+mdl2 <- lmer(symmetry_V1 ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl1, mdl2) ## no interaction
+
+## check focus
+
+mdl2b <- lmer(symmetry_V1 ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl2, mdl2b) ## no effect of focus: X(2) = 2.3559, p = 0.3079
+
+## check group
+
+mdl2c <- lmer(symmetry_V1 ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X(1) = 0.0107, p = 0.9177
+
+```
+
 Stiffness
 
 ```{r, message = FALSE, warning = FALSE}
@@ -378,6 +378,31 @@ STIFF_stats2 <- data_red_i_a %>%
   summarise(M = round(mean(stiffness_V1_abs),1),
             SD = round(sd(stiffness_V1_abs),1))
 STIFF_stats2
+
+```
+
+Create linear mixed model to investigate disease effect on stiffness
+
+```{r, message = FALSE, warning = FALSE}
+
+## interaction 
+mdl1 <- lmer(stiffness_V1_abs ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+mdl2 <- lmer(stiffness_V1_abs ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl1, mdl2) ## no interaction
+
+## check focus
+
+mdl2b <- lmer(stiffness_V1_abs ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl2, mdl2b) ## no effect of focus: X(2) = 2.713, p = 0.2576
+
+## check group
+
+mdl2c <- lmer(stiffness_V1_abs ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red_i_a, REML = FALSE)
+
+anova(mdl2, mdl2c) ## no group effect: X(1) = 2.2514, p =  0.1335
 
 ```
 
@@ -417,23 +442,24 @@ create model for onset to onset interval
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl4 <- lmer(onsC1_to_onsV1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(onsC1_to_onsV1 ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(onsC1_to_onsV1 ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
 
-summary(mdl4)
+mdl2b <- lmer(onsC1_to_onsV1 ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+anova(mdl2, mdl2b) ## no effect of focus: X(2) = 1.4016, p = 0.4962
 
-Extracting fit statistics for reporting in text
+## check group
 
-```{r, message = FALSE, warning = FALSE}
+mdl2c <- lmer(onsC1_to_onsV1 ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-tab_model(mdl4)
+anova(mdl2, mdl2c) ## no group effect: X(1) = 1.8463, p = 0.1742
 
 ```
 
@@ -441,23 +467,28 @@ create model for target to target interval
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl5 <- lmer(targC1_to_targV1 ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(targC1_to_targV1 ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(targC1_to_targV1 ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
 
-summary(mdl5)
+mdl2b <- lmer(targC1_to_targV1 ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+anova(mdl2, mdl2b) ## effect of focus: X(2) = 21.873, p = 1.779e-05
 
-Extracting fit statistics for reporting in text
+emmeans(mdl2, specs = pairwise ~ focus_con)
 
-```{r, message = FALSE, warning = FALSE}
+## check group
 
-tab_model(mdl5)
+mdl2c <- lmer(targC1_to_targV1 ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
+
+anova(mdl2, mdl2c) ## group effect: X(1) = 4.4016, p = 0.03591 *
+
+emmeans(mdl2, specs = pairwise ~ med_con)
 
 ```
 
@@ -465,23 +496,24 @@ create model for onset alignment
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl6 <- lmer(onsV1.syll.dur ~ med_con + focus_con + vowel + cons + age  + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(onsV1.syll.dur ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(onsV1.syll.dur ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
 
-summary(mdl6)
+mdl2b <- lmer(onsV1.syll.dur ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+anova(mdl2, mdl2b) ## no effect of focus:  X(2) = 4.3793, p = 0.112
 
-Extracting fit statistics for reporting in text
+## check group
 
-```{r, message = FALSE, warning = FALSE}
+mdl2c <- lmer(onsV1.syll.dur ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-tab_model(mdl6)
+anova(mdl2, mdl2c) ## no group effect:  X(1) = 0.3184, p = 0.5726
 
 ```
 
@@ -489,22 +521,23 @@ create model for target alignment
 
 ```{r, message = FALSE, warning = FALSE}
 
-mdl7 <- lmer(targV1.syll.dur ~ med_con + focus_con + vowel + cons + age + (1 + focus_con|speaker), data_red, REML = FALSE)
+## interaction 
+mdl1 <- lmer(targV1.syll.dur ~ med_con * focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```
+mdl2 <- lmer(targV1.syll.dur ~ med_con + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-Look at model
+anova(mdl1, mdl2) ## no interaction
 
-```{r, message = FALSE, warning = FALSE}
+## check focus
+mdl2b <- lmer(targV1.syll.dur ~ med_con + 1 + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-summary(mdl7)
+anova(mdl2, mdl2b) ## no effect of focus: X(2) = 0.2312, p = 0.8908
 
-```
+## check group
 
-Extracting fit statistics for reporting in text
+mdl2c <- lmer(targV1.syll.dur ~ 1 + focus_con + (1+focus_con|speaker) + (1|vowel) + (1|cons), data_red, REML = FALSE)
 
-```{r, message = FALSE, warning = FALSE}
+anova(mdl2, mdl2c) ## no group effect: X(1) = 0.6523, p = 0.4193
 
-tab_model(mdl7)
 
 ```

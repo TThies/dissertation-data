@@ -70,8 +70,8 @@ UPDRS_avgs <- data_CON_PD %>%
             max = max(UPDRS_total, na.rm = T))
 UPDRS_avgs
 
-mdl1 <- lm(UPDRS_total ~ med_con  + age, data_CON_PD, REML = FALSE)
-mdl1_null <- lm(UPDRS_total ~ 1 + age, data_CON_PD, REML = FALSE)
+mdl1 <- lm(UPDRS_total ~ med_con, data_CON_PD, REML = FALSE)
+mdl1_null <- lm(UPDRS_total ~ 1, data_CON_PD, REML = FALSE)
 
 anova(mdl1, mdl1_null)
 
@@ -116,8 +116,8 @@ UPDRS_avgs <- data_preop %>%
             max = max(UPDRS_total, na.rm = T))
 UPDRS_avgs
 
-mdl2 <- lm(UPDRS_total ~ med_con  + age, data_preop, REML = FALSE)
-mdl2_null <- lm(UPDRS_total ~ 1 + age, data_preop, REML = FALSE)
+mdl2 <- lm(UPDRS_total ~ med_con, data_preop, REML = FALSE)
+mdl2_null <- lm(UPDRS_total ~ 1, data_preop, REML = FALSE)
 
 anova(mdl2, mdl2_null)
 
@@ -126,7 +126,7 @@ UPDRS_avgs2 <- data_preop %>%
   summarise(M = round(mean(UPDRS_total, na.rm = T)),
             SD = round(sd(UPDRS_total, na.rm = T)))
 
-UPDRS_avgs2 %>% 
+plot01 <- UPDRS_avgs2 %>% 
   ggplot(aes(x = med_con, y = M, group = speaker)) +
   geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
   geom_line(col = 'darkgrey') +
@@ -135,6 +135,8 @@ UPDRS_avgs2 %>%
   scale_color_manual(values = c('#BE7592', '#74BDA0')) +
   xlab(NULL) +
   scale_x_discrete(labels = c('med-OFF','med-ON'))+
+  coord_cartesian(ylim = c(0, 52)) + 
+  scale_y_continuous(breaks = seq(0, 50, 10)) +
   ylab("UPDRS III")+
   theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
   theme(strip.text.x = element_text(size=20, face="bold"),
@@ -143,6 +145,9 @@ UPDRS_avgs2 %>%
         axis.text.y = element_text(size = 18)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot01, filename = '../plots/UPDRS_PD_DOPA.png',
+       width = 5, height = 5, dpi = 300)
 ```
 
 DBS effect: comparing motor scores between DBS-OFF and DBS-ON
@@ -163,8 +168,8 @@ UPDRS_avgs <- data_postop %>%
             max = max(UPDRS_total, na.rm = T))
 UPDRS_avgs
 
-mdl3 <- lm(UPDRS_total ~ med_con  + age, data_postop, REML = FALSE)
-mdl3_null <- lm(UPDRS_total ~ 1 + age, data_postop, REML = FALSE)
+mdl3 <- lm(UPDRS_total ~ med_con, data_postop, REML = FALSE)
+mdl3_null <- lm(UPDRS_total ~ 1, data_postop, REML = FALSE)
 
 anova(mdl3, mdl3_null)
 
@@ -173,7 +178,7 @@ UPDRS_avgs2 <- data_postop %>%
   summarise(M = round(mean(UPDRS_total, na.rm = T)),
             SD = round(sd(UPDRS_total, na.rm = T)))
 
-UPDRS_avgs2 %>% 
+plot02 <- UPDRS_avgs2 %>% 
   ggplot(aes(x = med_con, y = M, group = speaker)) +
   geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
   geom_line(col = 'darkgrey') +
@@ -182,6 +187,8 @@ UPDRS_avgs2 %>%
   scale_color_manual(values = c('#5275AD', '#AD8A52')) +
   xlab(NULL) +
   scale_x_discrete(labels = c('DBS-OFF','DBS-ON'))+
+  coord_cartesian(ylim = c(0, 52)) + 
+  scale_y_continuous(breaks = seq(0, 50, 10)) +
   ylab("UPDRS III")+
   theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
   theme(strip.text.x = element_text(size=20, face="bold"),
@@ -190,6 +197,9 @@ UPDRS_avgs2 %>%
         axis.text.y = element_text(size = 18)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot02, filename = '../plots/UPDRS_PD_DBS.png',
+       width = 5, height = 5, dpi = 300)
 ```
 
 Electrode/OFF effect: comparing motor scores between med-OFF and DBS-OFF
@@ -210,8 +220,8 @@ UPDRS_avgs <- data_OFF %>%
             max = max(UPDRS_total, na.rm = T))
 UPDRS_avgs
 
-mdl4 <- lm(UPDRS_total ~ med_con  + age, data_OFF, REML = FALSE)
-mdl4_null <- lm(UPDRS_total ~ 1 + age, data_OFF, REML = FALSE)
+mdl4 <- lm(UPDRS_total ~ med_con, data_OFF, REML = FALSE)
+mdl4_null <- lm(UPDRS_total ~ 1, data_OFF, REML = FALSE)
 
 anova(mdl4, mdl4_null)
 
@@ -220,7 +230,7 @@ UPDRS_avgs2 <- data_OFF %>%
   summarise(M = round(mean(UPDRS_total, na.rm = T)),
             SD = round(sd(UPDRS_total, na.rm = T)))
 
-UPDRS_avgs2 %>% 
+plot03 <- UPDRS_avgs2 %>% 
   ggplot(aes(x = med_con, y = M, group = speaker)) +
   geom_point(aes(col = med_con), shape = 19, alpha = 0.7, size = 6) +
   geom_line(col = 'darkgrey') +
@@ -229,6 +239,8 @@ UPDRS_avgs2 %>%
   scale_color_manual(values = c('#BE7592', '#5275AD')) +
   xlab(NULL) +
   scale_x_discrete(labels = c('med-OFF','DBS-OFF'))+
+  coord_cartesian(ylim = c(0, 52)) + 
+  scale_y_continuous(breaks = seq(0, 50, 10)) +
   ylab("UPDRS III")+
   theme(axis.title.y = element_text(face = 'bold', size = 18, margin = margin(r = 12)))+
   theme(strip.text.x = element_text(size=20, face="bold"),
@@ -237,6 +249,9 @@ UPDRS_avgs2 %>%
         axis.text.y = element_text(size = 18)) +
   theme(axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
+
+ggsave(plot03, filename = '../plots/UPDRS_PD_OFF.png',
+       width = 5, height = 5, dpi = 300)
 ```
 
 # Percentage changes in motor scores
@@ -375,7 +390,6 @@ brady_perc_change
 
 ```
 
-
 Calculate change in motoric subscores from med-OFF to DBS-ON
 reported under 9.1
 
@@ -493,7 +507,6 @@ fit3 <- ocm(VAS ~ med_con + (1|speaker),
 summary(fit3)
 
 ```
-
 
 Electrode effect: comparing med-OFF and DBS-OFF
 reported under section 10.2.1
